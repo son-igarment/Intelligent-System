@@ -1467,3 +1467,194 @@ body {
 .back-to-dashboard-btn:hover {
   background-color: #0A58CA;
 }
+
+/* Data Import Styles */
+.import-form-container {
+  background-color: #1E1E1E;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.import-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.import-title {
+  color: #64B5F6;
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+.import-description p {
+  color: #CCC;
+  margin: 5px 0;
+}
+
+.import-options {
+  display: flex;
+  gap: 30px;
+  margin-top: 10px;
+}
+
+.import-option {
+  flex: 1;
+  background-color: #252525;
+  border-radius: 6px;
+  padding: 20px;
+}
+
+.import-option h4 {
+  color: #AAA;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-label {
+  display: block;
+  background-color: #0D6EFD;
+  color: white;
+  padding: 12px 20px;
+  text-align: center;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.file-label:hover {
+  background-color: #0A58CA;
+}
+
+.loading-indicator {
+  background-color: #2C3E50;
+  border-radius: 4px;
+  padding: 10px 15px;
+  color: #DDD;
+}
+
+.error-message {
+  background-color: rgba(255, 0, 0, 0.1);
+  border-left: 4px solid #FF5252;
+  padding: 10px 15px;
+  color: #FF5252;
+  border-radius: 4px;
+}
+
+.success-message {
+  background-color: rgba(0, 200, 83, 0.1);
+  border-left: 4px solid #00C853;
+  padding: 10px 15px;
+  color: #00C853;
+  border-radius: 4px;
+}
+
+.data-preview {
+  background-color: #252525;
+  border-radius: 6px;
+  padding: 20px;
+}
+
+.data-preview h4 {
+  color: #AAA;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.preview-table-container {
+  overflow-x: auto;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.preview-table th, .preview-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #333;
+}
+
+.preview-table th {
+  background-color: #1E1E1E;
+  color: #64B5F6;
+  position: sticky;
+  top: 0;
+}
+
+.preview-table td {
+  color: #CCC;
+}
+
+.more-data-note {
+  margin-top: 10px;
+  text-align: right;
+  color: #999;
+  font-size: 0.9rem;
+}
+
+.calculate-section {
+  background-color: #252525;
+  border-radius: 6px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.calculate-section h4 {
+  color: #AAA;
+  margin-top: 0;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.calculate-btn {
+  background-color: #FF5252;
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.calculate-btn:hover {
+  background-color: #FF0000;
+}
+
+.calculate-btn:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+}
+
+.import-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.view-data-btn {
+  background-color: #1565C0;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.view-data-btn:hover {
+  background-color: #0D47A1;
+}

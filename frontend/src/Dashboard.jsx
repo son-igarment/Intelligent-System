@@ -4,6 +4,7 @@ import AnalystReport from './AnalystReport';
 import AnalystTool from './AnalystTool';
 import NotificationCenter from './NotificationCenter';
 import NotificationSection from './NotificationSection';
+import DataImport from './DataImport';
 import './App.css';
 
 function Dashboard({ onClose }) {
@@ -33,6 +34,10 @@ function Dashboard({ onClose }) {
 
   if (activeMenu === 'tool') {
     return <AnalystTool onClose={onClose} onMenuChange={handleMenuChange} />;
+  }
+  
+  if (activeMenu === 'import') {
+    return <DataImport onClose={onClose} onMenuChange={handleMenuChange} />;
   }
   
   if (activeMenu === 'notification') {
@@ -72,6 +77,11 @@ function Dashboard({ onClose }) {
           <div className={`sidebar-item ${activeMenu === 'tool' ? 'active' : ''}`}
                onClick={() => handleMenuChange('tool')}>
             Analyst tool
+          </div>
+          
+          <div className={`sidebar-item ${activeMenu === 'import' ? 'active' : ''}`}
+               onClick={() => handleMenuChange('import')}>
+            Data Import
           </div>
           
           <div className={`sidebar-item ${activeMenu === 'notification' ? 'active' : ''}`}
