@@ -1,41 +1,57 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import './App.css';
+import { useState } from 'react'
+import FundManagement from './FundManagement'
+import './App.css'
 
 function App() {
-  const [apiData, setApiData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [currentScreen, setCurrentScreen] = useState('main');
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get('/api/test');
-        setApiData(response.data);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setLoading(false);
-      }
-    };
+  const handleExit = () => {
+    window.close();
+  };
 
-    fetchData();
-  }, []);
+  const handleStart = () => {
+    setCurrentScreen('platform');
+  };
+
+  const handleClose = () => {
+    setCurrentScreen('main');
+  };
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>React + Flask App</h1>
-        {loading ? (
-          <p>Loading data from API...</p>
-        ) : (
-          <div>
-            <p>API Response:</p>
-            <pre>{JSON.stringify(apiData, null, 2)}</pre>
+    <div className="container">
+      {currentScreen === 'main' && (
+        // Main screen with authors and buttons
+        <>
+          <h1 className="title">AUTHOR AND OWNER</h1>
+          
+          <div className="profiles">
+            <div className="profile">
+              <div className="avatar-container">
+                <img src="/Nguyen-Kim-Viet.jpg" alt="Nguyễn Kim Việt" className="avatar" />
+              </div>
+              <h3>Nguyễn Kim Việt</h3>
+              <p>Researcher</p>
+            </div>
+
+            <div className="profile">
+              <div className="avatar-container">
+                <img src="/Pham-Le-Ngoc-Son.jpg" alt="Phạm Lê Ngọc Sơn" className="avatar" />
+              </div>
+              <h3>Phạm Lê Ngọc Sơn</h3>
+              <p>Researcher</p>
+            </div>
           </div>
-        )}
-      </header>
+
+          <div className="buttons">
+            <button className="start-btn" onClick={handleStart}>START</button>
+            <button className="exit-btn" onClick={handleExit}>EXIT</button>
+          </div>
+        </>
+      )}
+
+      {currentScreen === 'platform' && <FundManagement onClose={handleClose} />}
     </div>
-  );
+  )
 }
 
-export default App; 
+export default App
