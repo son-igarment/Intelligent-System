@@ -2,6 +2,8 @@ from flask import Blueprint, jsonify, request, current_app
 from models.item import create_item_model, validate_item
 import pandas as pd
 from datetime import datetime
+from services.beta_calculation import calculate_all_stock_betas, get_beta_for_stock, get_beta_portfolio
+from services.svm_analysis import analyze_stocks_with_svm
 
 api = Blueprint('api', __name__)
 
@@ -197,4 +199,199 @@ def calculate_beta_and_train_svm():
         })
     
     except Exception as e:
-        return jsonify({"error": str(e)}), 500 
+        return jsonify({"error": str(e)}), 500
+
+# Endpoint to calculate Beta for all stocks
+@api.route('/calculate-beta', methods=['POST'])
+def calculate_beta():
+    if not current_app.db:
+        return jsonify({"error": "Database connection not available"}), 500
+    
+    try:
+        # Get parameters from the request
+        request_data = request.json or {}
+        date = request_data.get('date')  # Optional date parameter
+        stock_code = request_data.get('stock_code')  # Optional specific stock
+        
+        # Retrieve stock data from MongoDB
+        stock_data = list(current_app.db.stock_data.find({}, {'_id': 0}))
+        if not stock_data:
+            return jsonify({"error": "No stock data available"}), 404
+        
+        # Convert to DataFrame
+        stock_df = pd.DataFrame(stock_data)
+        
+        # Get market index data (assuming it's in another collection)
+        market_data = list(current_app.db.market_index.find({}, {'_id': 0}))
+        if not market_data:
+            # Use VNIndex data from the stock_data if available
+            market_df = stock_df[stock_df['IndexCode'] == 'VNIndex'].copy()
+            if market_df.empty:
+                return jsonify({"error": "No market index data available"}), 404
+        else:
+            market_df = pd.DataFrame(market_data)
+        
+        # Calculate beta
+        if stock_code:
+            # Calculate beta for a specific stock
+            result = get_beta_for_stock(stock_df, market_df, stock_code, date)
+            
+            # Store the result in MongoDB
+            if result['beta'] is not None:
+                current_app.db.beta_values.insert_one({
+                    'stock_code': result['stock_code'],
+                    'date': result['date'],
+                    'beta': result['beta'],
+                    'calculation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'interpretation': result['interpretation']
+                })
+            
+            return jsonify(result)
+        else:
+            # Calculate beta for all stocks
+            results = calculate_all_stock_betas(stock_df, market_df, date)
+            
+            # Store results in MongoDB
+            beta_records = []
+            for _, row in results.iterrows():
+                if row['beta'] is not None:
+                    beta_records.append({
+                        'stock_code': row['stock_code'],
+                        'date': row['date'],
+                        'beta': float(row['beta']),
+                        'calculation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        'interpretation': row['interpretation']
+                    })
+            
+            if beta_records:
+                current_app.db.beta_values.insert_many(beta_records)
+            
+            return jsonify(results.to_dict(orient='records'))
+    
+    except Exception as e:
+        print(f"Error calculating beta: {str(e)}")
+        return jsonify({"error": f"Error calculating beta: {str(e)}"}), 500
+
+# Endpoint to get Beta for a portfolio
+@api.route('/calculate-portfolio-beta', methods=['POST'])
+def calculate_portfolio_beta():
+    if not current_app.db:
+        return jsonify({"error": "Database connection not available"}), 500
+    
+    try:
+        # Get parameters from the request
+        request_data = request.json or {}
+        portfolio = request_data.get('portfolio', {})  # Dict of stock_code: weight
+        date = request_data.get('date')  # Optional date parameter
+        
+        if not portfolio:
+            return jsonify({"error": "Portfolio data is required"}), 400
+        
+        # Retrieve stock data from MongoDB
+        stock_data = list(current_app.db.stock_data.find({}, {'_id': 0}))
+        if not stock_data:
+            return jsonify({"error": "No stock data available"}), 404
+        
+        # Convert to DataFrame
+        stock_df = pd.DataFrame(stock_data)
+        
+        # Get market index data
+        market_data = list(current_app.db.market_index.find({}, {'_id': 0}))
+        if not market_data:
+            # Use VNIndex data from the stock_data if available
+            market_df = stock_df[stock_df['IndexCode'] == 'VNIndex'].copy()
+            if market_df.empty:
+                return jsonify({"error": "No market index data available"}), 404
+        else:
+            market_df = pd.DataFrame(market_data)
+        
+        # Calculate portfolio beta
+        result = get_beta_portfolio(stock_df, market_df, portfolio, date)
+        
+        # Store the result in MongoDB
+        if result['portfolio_beta'] is not None:
+            current_app.db.portfolio_betas.insert_one({
+                'portfolio': portfolio,
+                'date': result['date'],
+                'portfolio_beta': result['portfolio_beta'],
+                'calculation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'interpretation': result['interpretation']
+            })
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        print(f"Error calculating portfolio beta: {str(e)}")
+        return jsonify({"error": f"Error calculating portfolio beta: {str(e)}"}), 500
+
+# Endpoint for SVM analysis
+@api.route('/svm-analysis', methods=['POST'])
+def svm_analysis():
+    if not current_app.db:
+        return jsonify({"error": "Database connection not available"}), 500
+    
+    try:
+        # Get parameters from request
+        request_data = request.json or {}
+        days_to_predict = request_data.get('days_to_predict', 5)
+        use_beta = request_data.get('use_beta', True)
+        
+        # Get stock data from MongoDB
+        stock_data = list(current_app.db.stock_data.find({}, {'_id': 0}))
+        if not stock_data:
+            return jsonify({"error": "No stock data available for analysis"}), 404
+        
+        # Convert to DataFrame
+        stock_df = pd.DataFrame(stock_data)
+        
+        # Get beta values if requested
+        beta_values = None
+        if use_beta:
+            beta_data = list(current_app.db.beta_values.find({}, {'_id': 0}))
+            if beta_data:
+                beta_values = pd.DataFrame(beta_data)
+        
+        # Perform SVM analysis
+        analysis_result = analyze_stocks_with_svm(stock_df, beta_values, days_to_predict)
+        
+        if not analysis_result["success"]:
+            return jsonify({"error": analysis_result["error"]}), 400
+        
+        # Save analysis results to MongoDB
+        analysis_record = {
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "days_to_predict": days_to_predict,
+            "accuracy": analysis_result["model_metrics"]["accuracy"],
+            "predictions": analysis_result["predictions"]
+        }
+        
+        current_app.db.svm_analyses.insert_one(analysis_record)
+        
+        return jsonify(analysis_result)
+    
+    except Exception as e:
+        print(f"Error performing SVM analysis: {str(e)}")
+        return jsonify({"error": f"Error performing SVM analysis: {str(e)}"}), 500
+
+# Endpoint to get the latest SVM analysis
+@api.route('/latest-svm-analysis', methods=['GET'])
+def get_latest_svm_analysis():
+    if not current_app.db:
+        return jsonify({"error": "Database connection not available"}), 500
+    
+    try:
+        # Find the latest analysis
+        latest_analysis = current_app.db.svm_analyses.find_one(
+            {},
+            {'_id': 0},
+            sort=[('date', -1)]  # Sort by date descending
+        )
+        
+        if not latest_analysis:
+            return jsonify({"error": "No SVM analysis results found"}), 404
+        
+        return jsonify(latest_analysis)
+    
+    except Exception as e:
+        print(f"Error retrieving latest SVM analysis: {str(e)}")
+        return jsonify({"error": f"Error retrieving latest SVM analysis: {str(e)}"}), 500 

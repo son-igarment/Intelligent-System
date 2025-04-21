@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import AssetReport from './AssetReport';
 import AnalystTool from './AnalystTool';
 import DataImport from './DataImport';
+import BetaCalculation from './BetaCalculation';
+import SVMAnalysis from './SVMAnalysis';
 import './App.css';
 
 function Dashboard({ onClose }) {
@@ -32,6 +34,14 @@ function Dashboard({ onClose }) {
   if (activeMenu === 'import') {
     return <DataImport onClose={onClose} onMenuChange={handleMenuChange} />;
   }
+  
+  if (activeMenu === 'beta') {
+    return <BetaCalculation onClose={onClose} onMenuChange={handleMenuChange} />;
+  }
+  
+  if (activeMenu === 'svm') {
+    return <SVMAnalysis onClose={onClose} onMenuChange={handleMenuChange} />;
+  }
 
   return (
     <div className="dashboard-container">
@@ -61,6 +71,16 @@ function Dashboard({ onClose }) {
           <div className={`sidebar-item ${activeMenu === 'tool' ? 'active' : ''}`}
                onClick={() => handleMenuChange('tool')}>
             Analyst tool
+          </div>
+          
+          <div className={`sidebar-item ${activeMenu === 'beta' ? 'active' : ''}`}
+               onClick={() => handleMenuChange('beta')}>
+            Beta Calculation
+          </div>
+          
+          <div className={`sidebar-item ${activeMenu === 'svm' ? 'active' : ''}`}
+               onClick={() => handleMenuChange('svm')}>
+            SVM Analysis
           </div>
           
           <div className={`sidebar-item ${activeMenu === 'import' ? 'active' : ''}`}
