@@ -22,10 +22,13 @@ def create_app():
         mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
         client = MongoClient(mongo_uri)
         app.db = client.intelligent_system_db  # Tên database
+        # Add a flag to indicate successful connection
+        app.db_connected = True
         print("MongoDB connection successful")
     except Exception as e:
         print(f"MongoDB connection error: {e}")
         app.db = None
+        app.db_connected = False
     
     # Import các routes
     from routes.api import api
@@ -39,7 +42,7 @@ def create_app():
     
     @app.route('/api/items', methods=['GET'])
     def get_items():
-        if app.db:
+        if app.db_connected:
             try:
                 items = list(app.db.items.find({}, {'_id': 0}))
                 return jsonify(items)
@@ -49,7 +52,7 @@ def create_app():
     
     @app.route('/api/items', methods=['POST'])
     def create_item():
-        if app.db:
+        if app.db_connected:
             try:
                 new_item = request.json
                 app.db.items.insert_one(new_item)

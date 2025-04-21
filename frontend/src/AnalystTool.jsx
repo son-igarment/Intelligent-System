@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import NotificationSection from './NotificationSection';
 import './App.css';
 
 function AnalystTool({ onClose, onMenuChange }) {
@@ -33,20 +32,12 @@ function AnalystTool({ onClose, onMenuChange }) {
             Assets report
           </div>
           
-          <div className="sidebar-item" onClick={() => onMenuChange('analyst')}>
-            Analyst report
-          </div>
-          
           <div className="sidebar-item active">
             Analyst tool
           </div>
           
-          <div className="sidebar-item" onClick={() => onMenuChange('notification')}>
-            Notification center
-          </div>
-          
-          <div className="sidebar-item" onClick={() => onMenuChange('settings')}>
-            Settings
+          <div className="sidebar-item" onClick={() => onMenuChange('import')}>
+            Data Import
           </div>
         </div>
         

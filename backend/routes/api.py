@@ -5,9 +5,21 @@ from datetime import datetime
 
 api = Blueprint('api', __name__)
 
+@api.route('/test-connection', methods=['GET'])
+def test_connection():
+    """Simple endpoint to test API connectivity without MongoDB"""
+    return jsonify({
+        "status": "success",
+        "message": "API is working correctly",
+        "mock_data": [
+            {"id": 1, "name": "Test Item 1"},
+            {"id": 2, "name": "Test Item 2"}
+        ]
+    })
+
 @api.route('/items', methods=['GET'])
 def get_items():
-    if not current_app.db:
+    if not current_app.db_connected:
         return jsonify({"error": "Database connection not available"}), 500
     
     try:

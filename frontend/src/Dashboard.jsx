@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import AssetReport from './AssetReport';
-import AnalystReport from './AnalystReport';
 import AnalystTool from './AnalystTool';
-import NotificationCenter from './NotificationCenter';
-import NotificationSection from './NotificationSection';
 import DataImport from './DataImport';
 import './App.css';
 
@@ -28,20 +25,12 @@ function Dashboard({ onClose }) {
     return <AssetReport onClose={onClose} onMenuChange={handleMenuChange} />;
   }
   
-  if (activeMenu === 'analyst') {
-    return <AnalystReport onClose={onClose} onMenuChange={handleMenuChange} />;
-  }
-
   if (activeMenu === 'tool') {
     return <AnalystTool onClose={onClose} onMenuChange={handleMenuChange} />;
   }
   
   if (activeMenu === 'import') {
     return <DataImport onClose={onClose} onMenuChange={handleMenuChange} />;
-  }
-  
-  if (activeMenu === 'notification') {
-    return <NotificationCenter onClose={onClose} onMenuChange={handleMenuChange} />;
   }
 
   return (
@@ -69,11 +58,6 @@ function Dashboard({ onClose }) {
             Assets report
           </div>
           
-          <div className={`sidebar-item ${activeMenu === 'analyst' ? 'active' : ''}`}
-               onClick={() => handleMenuChange('analyst')}>
-            Analyst report
-          </div>
-          
           <div className={`sidebar-item ${activeMenu === 'tool' ? 'active' : ''}`}
                onClick={() => handleMenuChange('tool')}>
             Analyst tool
@@ -82,16 +66,6 @@ function Dashboard({ onClose }) {
           <div className={`sidebar-item ${activeMenu === 'import' ? 'active' : ''}`}
                onClick={() => handleMenuChange('import')}>
             Data Import
-          </div>
-          
-          <div className={`sidebar-item ${activeMenu === 'notification' ? 'active' : ''}`}
-               onClick={() => handleMenuChange('notification')}>
-            Notification center
-          </div>
-          
-          <div className={`sidebar-item ${activeMenu === 'settings' ? 'active' : ''}`}
-               onClick={() => handleMenuChange('settings')}>
-            Settings
           </div>
         </div>
         
@@ -139,9 +113,6 @@ function Dashboard({ onClose }) {
                 </tbody>
               </table>
             </div>
-            
-            {/* Notification Section */}
-            <NotificationSection />
           </div>
         </div>
       </div>

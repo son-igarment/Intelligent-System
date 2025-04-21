@@ -1,16 +1,15 @@
 import React from 'react';
-import NotificationSection from './NotificationSection';
 import './App.css';
 
 function AssetReport({ onClose, onMenuChange }) {
   const currentDate = "2025-03-28";
   
   const assetData = [
-    { id: 1, name: "ABC", volume: "10,000,000", curPrice: "20.000", cost: "195,000,000,000", totalValue: "200,000,000,000", profit: "+5,000,000,000", profitPercent: "+2.56%", weight: "66.67%" },
-    { id: 2, name: "BCD", volume: "100,000", curPrice: "33.000", cost: "3,600,000,000", totalValue: "3,300,000,000", profit: "-300,000,000", profitPercent: "-8.33%", weight: "1.10%" },
-    { id: 3, name: "EFG", volume: "100,000", curPrice: "50.000", cost: "5,600,000,000", totalValue: "5,000,000,000", profit: "-600,000,000", profitPercent: "-8.33%", weight: "1.67%" },
-    { id: 4, name: "Cash", volume: "-", curPrice: "", cost: "70,800,000,000", totalValue: "91,700,000,000", profit: "+20,900,000,000", profitPercent: "+29.52%", weight: "30.56%" },
-    { id: 5, name: "NAV", volume: "25,000,000", curPrice: "12.000", cost: "275,000,000,000", totalValue: "300,000,000,000", profit: "+25,000,000,000", profitPercent: "+9.09%", weight: "100.00%" }
+    { id: 1, name: "ABC", volume: 1000, curPrice: 20.000, cost: 19500.00, totalValue: 20000.00, profit: "+500.00", profitPercent: "+2.56%", weight: "10.00%" },
+    { id: 2, name: "BCD", volume: 2000, curPrice: 33.000, cost: 72000.00, totalValue: 66000.00, profit: "-6000.00", profitPercent: "-8.33%", weight: "33.00%" },
+    { id: 3, name: "EFG", volume: 1500, curPrice: 50.000, cost: 84000.00, totalValue: 75000.00, profit: "-9000.00", profitPercent: "-10.71%", weight: "37.50%" },
+    { id: 4, name: "Cash", volume: 1, curPrice: 39000.00, cost: 39000.00, totalValue: 39000.00, profit: "+0.00", profitPercent: "+0.00%", weight: "19.50%" },
+    { id: 5, name: "NAV", volume: 1, curPrice: 200000.00, cost: 214500.00, totalValue: 200000.00, profit: "-14500.00", profitPercent: "-6.76%", weight: "100.00%" }
   ];
 
   return (
@@ -36,20 +35,12 @@ function AssetReport({ onClose, onMenuChange }) {
             Assets report
           </div>
           
-          <div className="sidebar-item" onClick={() => onMenuChange('analyst')}>
-            Analyst report
-          </div>
-          
           <div className="sidebar-item" onClick={() => onMenuChange('tool')}>
             Analyst tool
           </div>
           
-          <div className="sidebar-item" onClick={() => onMenuChange('notification')}>
-            Notification center
-          </div>
-          
-          <div className="sidebar-item" onClick={() => onMenuChange('settings')}>
-            Settings
+          <div className="sidebar-item" onClick={() => onMenuChange('import')}>
+            Data Import
           </div>
         </div>
         
@@ -101,9 +92,6 @@ function AssetReport({ onClose, onMenuChange }) {
                 </tbody>
               </table>
             </div>
-            
-            {/* Notification Section */}
-            <NotificationSection />
           </div>
         </div>
       </div>
