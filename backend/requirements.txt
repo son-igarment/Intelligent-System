@@ -1,7 +1,7 @@
 flask==2.2.5
 werkzeug==2.2.3
 flask-cors==3.0.10
-pymongo==4.3.3
+pymongo==3.12.3
 python-dotenv==1.0.0
 pandas==1.5.3
 openpyxl==3.1.1
