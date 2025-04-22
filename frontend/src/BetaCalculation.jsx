@@ -25,7 +25,7 @@ function BetaCalculation({ onClose, onMenuChange }) {
       setLoading(true);
       setError('');
       
-      const response = await fetch('/api/stock-data');
+      const response = await fetch('http://localhost:5000/api/stock-data');
       const data = await response.json();
       
       if (response.ok) {
@@ -48,7 +48,7 @@ function BetaCalculation({ onClose, onMenuChange }) {
       setLoading(true);
       setError('');
       
-      const response = await fetch('/api/calculate-beta', {
+      const response = await fetch('http://localhost:5000/api/calculate-beta', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -85,7 +85,7 @@ function BetaCalculation({ onClose, onMenuChange }) {
       setLoading(true);
       setError('');
       
-      const response = await fetch('/api/calculate-beta', {
+      const response = await fetch('http://localhost:5000/api/calculate-beta', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -152,7 +152,7 @@ function BetaCalculation({ onClose, onMenuChange }) {
       setLoading(true);
       setError('');
       
-      const response = await fetch('/api/calculate-portfolio-beta', {
+      const response = await fetch('http://localhost:5000/api/calculate-portfolio-beta', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

@@ -20,7 +20,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
     try {
       setLoading(true);
       
-      const response = await fetch('/api/latest-svm-analysis');
+      const response = await fetch('http://localhost:5000/api/latest-svm-analysis');
       
       if (response.ok) {
         const data = await response.json();
@@ -45,7 +45,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
       setLoading(true);
       setError('');
       
-      const response = await fetch('/api/svm-analysis', {
+      const response = await fetch('http://localhost:5000/api/svm-analysis', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
