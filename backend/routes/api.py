@@ -174,23 +174,23 @@ def calculate_beta_and_train_svm():
         # Trong thực tế, ở đây sẽ gọi hàm tính Beta và train SVM
         # Mô phỏng kết quả tính toán
         calculation_result = {
-            "calculation_id": datetime.now().strftime("%Y%m%d%H%M%S"),
-            "calculation_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "data_count": len(data),
+            "calculation_id": str(datetime.now().strftime("%Y%m%d%H%M%S")),
+            "calculation_date": str(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+            "data_count": str(len(data)),
             "beta_values": {
-                "stock1": 1.25,
-                "stock2": 0.85,
-                "stock3": 1.05
+                "stock1": "1.25",
+                "stock2": "0.85",
+                "stock3": "1.05"
             },
             "svm_model": {
-                "accuracy": 0.92,
-                "precision": 0.89,
-                "recall": 0.93
+                "accuracy": "0.92",
+                "precision": "0.89",
+                "recall": "0.93"
             }
         }
         
         # Lưu kết quả tính toán
-        current_app.db.calculations.insert_one(calculation_result)
+        current_app.db.calculations.insert_one(calculation_result.copy())
         
         return jsonify({
             "status": "success",
