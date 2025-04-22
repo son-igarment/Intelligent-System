@@ -87,6 +87,75 @@ function DataImport({ onClose, onMenuChange }) {
     reader.readAsBinaryString(file);
   };
 
+  // Xử lý import file chỉ số thị trường (Market Index)
+  const handleMarketIndexImport = (e) => {
+    setLoading(true);
+    setError("");
+    setSuccess(false);
+    
+    const file = e.target.files[0];
+    if (!file) {
+      setLoading(false);
+      return;
+    }
+    
+    setFileName(file.name);
+    
+    // Xác định loại file (CSV hay Excel) và xử lý phù hợp
+    if (file.name.endsWith('.csv')) {
+      // Xử lý CSV cho market index
+      Papa.parse(file, {
+        header: true,
+        complete: (results) => {
+          if (results.data && results.data.length > 0) {
+            setImportedData(results.data);
+            sendMarketIndexToBackend(results.data);
+          } else {
+            setError("Không thể đọc dữ liệu từ file CSV VNIndex.");
+          }
+          setLoading(false);
+        },
+        error: (error) => {
+          setError(`Lỗi khi xử lý file CSV VNIndex: ${error.message}`);
+          setLoading(false);
+        }
+      });
+    } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      // Xử lý Excel cho market index
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        try {
+          const data = e.target.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          
+          if (jsonData && jsonData.length > 0) {
+            setImportedData(jsonData);
+            sendMarketIndexToBackend(jsonData);
+          } else {
+            setError("Không thể đọc dữ liệu từ file Excel VNIndex.");
+          }
+        } catch (err) {
+          setError(`Lỗi khi xử lý file Excel VNIndex: ${err.message}`);
+        }
+        setLoading(false);
+      };
+      
+      reader.onerror = () => {
+        setError("Lỗi khi đọc file VNIndex");
+        setLoading(false);
+      };
+      
+      reader.readAsBinaryString(file);
+    } else {
+      setError("Định dạng file không được hỗ trợ. Vui lòng chọn file CSV hoặc Excel.");
+      setLoading(false);
+    }
+  };
+
   // Gửi dữ liệu đến backend
   const sendDataToBackend = async (data) => {
     try {
@@ -110,6 +179,34 @@ function DataImport({ onClose, onMenuChange }) {
       
     } catch (err) {
       setError(`Lỗi khi gửi dữ liệu: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Gửi dữ liệu chỉ số thị trường đến backend
+  const sendMarketIndexToBackend = async (data) => {
+    try {
+      setLoading(true);
+
+      const response = await fetch('http://localhost:5000/api/import-market-index', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ data })
+      });
+      
+      const result = await response.json();
+      if (response.ok) {
+        setSuccess(true);
+        alert(`Dữ liệu VNIndex đã được import thành công: ${result.message}`);
+      } else {
+        setError(result.error || "Lỗi khi lưu dữ liệu VNIndex");
+      }
+      
+    } catch (err) {
+      setError(`Lỗi khi gửi dữ liệu VNIndex: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -250,6 +347,18 @@ function DataImport({ onClose, onMenuChange }) {
                       id="excel-input"
                     />
                     <label htmlFor="excel-input" className="file-label">Chọn file Excel</label>
+                  </div>
+
+                  <div className="import-option">
+                    <h4>Nhập dữ liệu VNIndex</h4>
+                    <input 
+                      type="file" 
+                      accept=".csv, .xlsx, .xls" 
+                      onChange={handleMarketIndexImport}
+                      className="file-input"
+                      id="market-index-input"
+                    />
+                    <label htmlFor="market-index-input" className="file-label">Chọn file VNIndex</label>
                   </div>
                 </div>
 

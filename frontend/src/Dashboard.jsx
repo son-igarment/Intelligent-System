@@ -4,6 +4,7 @@ import AnalystTool from './AnalystTool';
 import DataImport from './DataImport';
 import BetaCalculation from './BetaCalculation';
 import SVMAnalysis from './SVMAnalysis';
+import MarketIndexView from './MarketIndexView';
 import './App.css';
 
 function Dashboard({ onClose }) {
@@ -41,6 +42,10 @@ function Dashboard({ onClose }) {
   
   if (activeMenu === 'svm') {
     return <SVMAnalysis onClose={onClose} onMenuChange={handleMenuChange} />;
+  }
+  
+  if (activeMenu === 'market-index') {
+    return <MarketIndexView onClose={onClose} onMenuChange={handleMenuChange} />;
   }
 
   return (
@@ -86,6 +91,11 @@ function Dashboard({ onClose }) {
           <div className={`sidebar-item ${activeMenu === 'import' ? 'active' : ''}`}
                onClick={() => handleMenuChange('import')}>
             Data Import
+          </div>
+          
+          <div className={`sidebar-item ${activeMenu === 'market-index' ? 'active' : ''}`}
+               onClick={() => handleMenuChange('market-index')}>
+            Market Index
           </div>
         </div>
         

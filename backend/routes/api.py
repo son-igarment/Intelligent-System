@@ -108,6 +108,86 @@ def import_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# Endpoint mới để nhận dữ liệu chỉ số thị trường (Market Index)
+@api.route('/import-market-index', methods=['POST'])
+def import_market_index():
+    if not current_app.db:
+        return jsonify({"error": "Database connection not available"}), 500
+    
+    try:
+        # Nhận dữ liệu từ frontend
+        data = request.json.get('data', [])
+        
+        if not data or not isinstance(data, list):
+            return jsonify({"error": "No valid market index data provided"}), 400
+        
+        # Thêm metadata
+        import_info = {
+            "import_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "records_count": len(data),
+            "type": "market_index"
+        }
+        
+        # Lưu thông tin import
+        import_id = current_app.db.market_index_imports.insert_one(import_info).inserted_id
+        import_id_str = str(import_id)
+        
+        # Thêm import_id vào mỗi record và xử lý dữ liệu
+        for record in data:
+            record['import_id'] = import_id_str
+            
+            # Chuyển đổi các trường dữ liệu từ chuỗi thành số nếu cần
+            for field in ['OpenIndex', 'HighestIndex', 'LowestIndex', 'CloseIndex', 'TotalVolume', 'TotalValue']:
+                if field in record and isinstance(record[field], str):
+                    try:
+                        # Xử lý các chuỗi số có thể có dấu phẩy hoặc các ký tự đặc biệt
+                        clean_value = record[field].replace(',', '')
+                        record[field] = float(clean_value)
+                    except (ValueError, TypeError):
+                        # Nếu không thể chuyển đổi, giữ nguyên giá trị
+                        pass
+            
+            # Chuyển đổi ngày từ chuỗi sang định dạng ngày nếu cần
+            if 'TradeDate' in record and isinstance(record['TradeDate'], str):
+                try:
+                    # Thử các định dạng ngày tháng phổ biến
+                    for date_format in ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%Y/%m/%d']:
+                        try:
+                            date_obj = datetime.strptime(record['TradeDate'], date_format)
+                            record['TradeDate'] = date_obj.strftime('%Y-%m-%d')
+                            break
+                        except ValueError:
+                            continue
+                except Exception:
+                    # Nếu không thể chuyển đổi, giữ nguyên giá trị
+                    pass
+        
+        # Lưu dữ liệu vào collection "market_index_data"
+        current_app.db.market_index_data.insert_many(data)
+        
+        return jsonify({
+            "status": "success", 
+            "message": f"Imported {len(data)} market index records successfully",
+            "import_id": import_id_str
+        }), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Lấy danh sách dữ liệu chỉ số thị trường
+@api.route('/market-index-data', methods=['GET'])
+def get_market_index_data():
+    if not current_app.db:
+        return jsonify({"error": "Database connection not available"}), 500
+    
+    try:
+        # Có thể thêm tham số để lọc và phân trang
+        limit = int(request.args.get('limit', 100))
+        data = list(current_app.db.market_index_data.find({}, {'_id': 0}).limit(limit))
+        
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # Lấy danh sách các lần import
 @api.route('/imports', methods=['GET'])
 def get_imports():
