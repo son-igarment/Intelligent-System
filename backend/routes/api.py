@@ -306,15 +306,49 @@ def calculate_beta():
         # Convert to DataFrame
         stock_df = pd.DataFrame(stock_data)
         
-        # Get market index data (assuming it's in another collection)
-        market_data = list(current_app.db.market_index.find({}, {'_id': 0}))
-        if not market_data:
-            # Use VNIndex data from the stock_data if available
-            market_df = stock_df[stock_df['IndexCode'] == 'VNIndex'].copy()
-            if market_df.empty:
-                return jsonify({"error": "No market index data available"}), 404
-        else:
+        # Get market index data from market_index_data collection
+        market_data = list(current_app.db.market_index_data.find({}, {'_id': 0}))
+        
+        if market_data:
+            # Convert to DataFrame
             market_df = pd.DataFrame(market_data)
+            
+            # Normalize index codes - handle different naming conventions
+            # Map HSX or HOSE to VNIndex, HNX to HNXIndex
+            code_mapping = {
+                'HSX': 'VNIndex',
+                'HOSE': 'VNIndex',
+                'HNX': 'HNXIndex'
+            }
+            
+            if 'IndexCode' in market_df.columns:
+                market_df['IndexCode'] = market_df['IndexCode'].apply(
+                    lambda x: code_mapping.get(x, x) if isinstance(x, str) else x
+                )
+            
+            # Make sure we use the right column names
+            # If the market data has different column names, map them to expected names
+            if 'TradeDate' in market_df.columns and 'Date' not in market_df.columns:
+                market_df['Date'] = market_df['TradeDate']
+            
+            if 'CloseIndex' in market_df.columns and 'Close' not in market_df.columns:
+                market_df['Close'] = market_df['CloseIndex']
+                
+        else:
+            # No market_index_data, try to use VNIndex from stock_data as fallback
+            market_df = stock_df[stock_df['IndexCode'] == 'VNIndex'].copy()
+            
+            if market_df.empty:
+                # Also try with alternate names
+                for alt_code in ['HOSE', 'HSX']:
+                    market_df = stock_df[stock_df['IndexCode'] == alt_code].copy()
+                    if not market_df.empty:
+                        # Rename the IndexCode to VNIndex for consistency
+                        market_df['IndexCode'] = 'VNIndex'
+                        break
+                        
+            if market_df.empty:
+                return jsonify({"error": "No market index data available. Please import VNIndex data first."}), 404
         
         # Calculate beta
         if stock_code:
@@ -337,7 +371,6 @@ def calculate_beta():
             return jsonify(result)
         else:
             # Calculate beta for all stocks with days_to_predict parameter
-            # Modify calculate_all_stock_betas to include days_to_predict
             results = []
             for code in stock_df['MarketCode'].unique():
                 beta_result = get_beta_for_stock(stock_df, market_df, code, date, days_to_predict)
@@ -396,15 +429,49 @@ def calculate_portfolio_beta():
         # Convert to DataFrame
         stock_df = pd.DataFrame(stock_data)
         
-        # Get market index data
-        market_data = list(current_app.db.market_index.find({}, {'_id': 0}))
-        if not market_data:
-            # Use VNIndex data from the stock_data if available
-            market_df = stock_df[stock_df['IndexCode'] == 'VNIndex'].copy()
-            if market_df.empty:
-                return jsonify({"error": "No market index data available"}), 404
-        else:
+        # Get market index data from market_index_data collection
+        market_data = list(current_app.db.market_index_data.find({}, {'_id': 0}))
+        
+        if market_data:
+            # Convert to DataFrame
             market_df = pd.DataFrame(market_data)
+            
+            # Normalize index codes - handle different naming conventions
+            # Map HSX or HOSE to VNIndex, HNX to HNXIndex
+            code_mapping = {
+                'HSX': 'VNIndex',
+                'HOSE': 'VNIndex',
+                'HNX': 'HNXIndex'
+            }
+            
+            if 'IndexCode' in market_df.columns:
+                market_df['IndexCode'] = market_df['IndexCode'].apply(
+                    lambda x: code_mapping.get(x, x) if isinstance(x, str) else x
+                )
+            
+            # Make sure we use the right column names
+            # If the market data has different column names, map them to expected names
+            if 'TradeDate' in market_df.columns and 'Date' not in market_df.columns:
+                market_df['Date'] = market_df['TradeDate']
+            
+            if 'CloseIndex' in market_df.columns and 'Close' not in market_df.columns:
+                market_df['Close'] = market_df['CloseIndex']
+                
+        else:
+            # No market_index_data, try to use VNIndex from stock_data as fallback
+            market_df = stock_df[stock_df['IndexCode'] == 'VNIndex'].copy()
+            
+            if market_df.empty:
+                # Also try with alternate names
+                for alt_code in ['HOSE', 'HSX']:
+                    market_df = stock_df[stock_df['IndexCode'] == alt_code].copy()
+                    if not market_df.empty:
+                        # Rename the IndexCode to VNIndex for consistency
+                        market_df['IndexCode'] = 'VNIndex'
+                        break
+                        
+            if market_df.empty:
+                return jsonify({"error": "No market index data available. Please import VNIndex data first."}), 404
         
         # Calculate portfolio beta with days_to_predict parameter
         result = get_beta_portfolio(stock_df, market_df, portfolio, date, days_to_predict)
@@ -462,13 +529,46 @@ def svm_analysis():
                 print(f"No beta values found for prediction horizon {days_to_predict}, calculating new ones...")
                 
                 # Lấy thị trường để tính beta
-                market_data = list(current_app.db.market_index.find({}, {'_id': 0}))
-                if not market_data:
-                    market_df = stock_df[stock_df['IndexCode'] == 'VNIndex'].copy()
-                    if market_df.empty:
-                        return jsonify({"error": "No market index data available for beta calculation"}), 404
-                else:
+                market_data = list(current_app.db.market_index_data.find({}, {'_id': 0}))
+                
+                if market_data:
+                    # Convert to DataFrame
                     market_df = pd.DataFrame(market_data)
+                    
+                    # Normalize index codes - handle different naming conventions
+                    code_mapping = {
+                        'HSX': 'VNIndex',
+                        'HOSE': 'VNIndex',
+                        'HNX': 'HNXIndex'
+                    }
+                    
+                    if 'IndexCode' in market_df.columns:
+                        market_df['IndexCode'] = market_df['IndexCode'].apply(
+                            lambda x: code_mapping.get(x, x) if isinstance(x, str) else x
+                        )
+                    
+                    # Map column names if needed
+                    if 'TradeDate' in market_df.columns and 'Date' not in market_df.columns:
+                        market_df['Date'] = market_df['TradeDate']
+                    
+                    if 'CloseIndex' in market_df.columns and 'Close' not in market_df.columns:
+                        market_df['Close'] = market_df['CloseIndex']
+                        
+                else:
+                    # No market_index_data, try to use VNIndex from stock_data as fallback
+                    market_df = stock_df[stock_df['IndexCode'] == 'VNIndex'].copy()
+                    
+                    if market_df.empty:
+                        # Also try with alternate names
+                        for alt_code in ['HOSE', 'HSX']:
+                            market_df = stock_df[stock_df['IndexCode'] == alt_code].copy()
+                            if not market_df.empty:
+                                # Rename the IndexCode to VNIndex for consistency
+                                market_df['IndexCode'] = 'VNIndex'
+                                break
+                                
+                    if market_df.empty:
+                        return jsonify({"error": "No market index data available for beta calculation. Please import VNIndex data first."}), 404
                 
                 # Tính beta cho tất cả cổ phiếu
                 beta_records = []
