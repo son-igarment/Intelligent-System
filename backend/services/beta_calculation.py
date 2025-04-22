@@ -166,7 +166,7 @@ def calculate_all_stock_betas(stock_data, market_data, date=None):
     
     return pd.DataFrame(results)
 
-def get_beta_portfolio(stock_data, market_data, portfolio, date=None):
+def get_beta_portfolio(stock_data, market_data, portfolio, date=None, days_to_predict=5):
     """
     Calculate the Beta for a portfolio of stocks
     
@@ -175,6 +175,7 @@ def get_beta_portfolio(stock_data, market_data, portfolio, date=None):
     market_data (DataFrame): Market index data
     portfolio (dict): Dictionary with stock codes as keys and weights as values
     date (str, optional): Date to calculate Beta for, defaults to latest
+    days_to_predict (int, optional): Number of days to predict ahead, affects Beta calculation window
     
     Returns:
     dict: Portfolio Beta and component Betas
@@ -184,7 +185,7 @@ def get_beta_portfolio(stock_data, market_data, portfolio, date=None):
     component_betas = []
     
     for stock_code, weight in portfolio.items():
-        beta_result = get_beta_for_stock(stock_data, market_data, stock_code, date)
+        beta_result = get_beta_for_stock(stock_data, market_data, stock_code, date, days_to_predict)
         if beta_result['beta'] is not None:
             betas.append(beta_result['beta'])
             weights.append(weight)
@@ -209,5 +210,6 @@ def get_beta_portfolio(stock_data, market_data, portfolio, date=None):
         'portfolio_beta': portfolio_beta,
         'date': date,
         'component_betas': component_betas,
-        'interpretation': interpret_beta(portfolio_beta)
+        'interpretation': interpret_beta(portfolio_beta),
+        'prediction_horizon': days_to_predict
     } 

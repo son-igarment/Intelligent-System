@@ -12,6 +12,7 @@ function BetaCalculation({ onClose, onMenuChange }) {
   const [showPortfolio, setShowPortfolio] = useState(false);
   const [portfolio, setPortfolio] = useState({});
   const [portfolioBeta, setPortfolioBeta] = useState(null);
+  const [daysToPrediction, setDaysToPrediction] = useState(5);
 
   // Fetch stocks on component load
   useEffect(() => {
@@ -52,7 +53,9 @@ function BetaCalculation({ onClose, onMenuChange }) {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({})
+        body: JSON.stringify({
+          days_to_predict: parseInt(daysToPrediction)
+        })
       });
       
       const data = await response.json();
@@ -88,7 +91,8 @@ function BetaCalculation({ onClose, onMenuChange }) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          stock_code: selectedStock
+          stock_code: selectedStock,
+          days_to_predict: parseInt(daysToPrediction)
         })
       });
       
@@ -154,7 +158,8 @@ function BetaCalculation({ onClose, onMenuChange }) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          portfolio: portfolio
+          portfolio: portfolio,
+          days_to_predict: parseInt(daysToPrediction)
         })
       });
       

@@ -303,6 +303,7 @@ def calculate_portfolio_beta():
         request_data = request.json or {}
         portfolio = request_data.get('portfolio', {})  # Dict of stock_code: weight
         date = request_data.get('date')  # Optional date parameter
+        days_to_predict = request_data.get('days_to_predict', 5)  # Default to 5 days
         
         if not portfolio:
             return jsonify({"error": "Portfolio data is required"}), 400
@@ -325,8 +326,8 @@ def calculate_portfolio_beta():
         else:
             market_df = pd.DataFrame(market_data)
         
-        # Calculate portfolio beta
-        result = get_beta_portfolio(stock_df, market_df, portfolio, date)
+        # Calculate portfolio beta with days_to_predict parameter
+        result = get_beta_portfolio(stock_df, market_df, portfolio, date, days_to_predict)
         
         # Store the result in MongoDB
         if result['portfolio_beta'] is not None:
@@ -335,7 +336,8 @@ def calculate_portfolio_beta():
                 'date': result['date'],
                 'portfolio_beta': result['portfolio_beta'],
                 'calculation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'interpretation': result['interpretation']
+                'interpretation': result['interpretation'],
+                'prediction_horizon': days_to_predict
             }
             insert_result = current_app.db.portfolio_betas.insert_one(portfolio_record)
             result['_id'] = str(insert_result.inserted_id)
