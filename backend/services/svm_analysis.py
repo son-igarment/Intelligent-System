@@ -68,7 +68,7 @@ def prepare_features(stock_data, beta_values, days_to_predict=5):
             
             # Features
             features = [
-                current_data['CurrentIndex'],         # Current price
+                current_data['ClosePrice'],         # Current price
                 current_data['rsi_14'],               # RSI
                 current_data['macd'],                 # MACD
                 current_data['macd_signal'],          # MACD Signal
@@ -84,8 +84,8 @@ def prepare_features(stock_data, beta_values, days_to_predict=5):
                 features.append(beta_value)
             
             # Target: Will the price go up in the next 'days_to_predict' days?
-            future_price = group.iloc[i + days_to_predict]['CurrentIndex']
-            current_price = current_data['CurrentIndex']
+            future_price = float(group.iloc[i + days_to_predict]['ClosePrice'])
+            current_price = float(current_data['ClosePrice'])
             
             # Classify as 1 (up), 0 (neutral), -1 (down) with adjusted thresholds
             percent_change = (future_price - current_price) / current_price * 100
@@ -114,34 +114,34 @@ def calculate_technical_indicators(df):
     df = df.copy()
     
     # RSI (Relative Strength Index)
-    delta = df['CurrentIndex'].diff()
+    delta = df['ClosePrice'].astype(float).diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
     rs = gain / loss
     df['rsi_14'] = 100 - (100 / (1 + rs))
     
     # MACD (Moving Average Convergence Divergence)
-    exp1 = df['CurrentIndex'].ewm(span=12, adjust=False).mean()
-    exp2 = df['CurrentIndex'].ewm(span=26, adjust=False).mean()
+    exp1 = df['ClosePrice'].ewm(span=12, adjust=False).mean()
+    exp2 = df['ClosePrice'].ewm(span=26, adjust=False).mean()
     df['macd'] = exp1 - exp2
     df['macd_signal'] = df['macd'].ewm(span=9, adjust=False).mean()
     
     # Bollinger Bands
-    df['20sma'] = df['CurrentIndex'].rolling(window=20).mean()
-    df['volatility_20'] = df['CurrentIndex'].rolling(window=20).std()
+    df['20sma'] = df['ClosePrice'].rolling(window=20).mean()
+    df['volatility_20'] = df['ClosePrice'].rolling(window=20).std()
     df['upper_band'] = df['20sma'] + (df['volatility_20'] * 2)
     df['lower_band'] = df['20sma'] - (df['volatility_20'] * 2)
     
     # OBV (On-Balance Volume)
-    df['daily_ret'] = df['CurrentIndex'].pct_change()
+    df['daily_ret'] = df['ClosePrice'].astype(float).pct_change()
     df['direction'] = np.where(df['daily_ret'] > 0, 1, -1)
     df['direction'][df['daily_ret'] == 0] = 0
-    df['obv'] = (df['TradingVolume'] * df['direction']).cumsum()
+    df['obv'] = (df['TotalVolume'] * df['direction']).cumsum()
     
     # ATR (Average True Range)
-    df['high_low'] = df['HighestIndex'] - df['LowestIndex']
-    df['high_close'] = abs(df['HighestIndex'] - df['CurrentIndex'].shift())
-    df['low_close'] = abs(df['LowestIndex'] - df['CurrentIndex'].shift())
+    df['high_low'] = df['HighestPrice'].astype(float) - df['LowestPrice'].astype(float)
+    df['high_close'] = abs(df['HighestPrice'].astype(float) - df['ClosePrice'].astype(float).shift())
+    df['low_close'] = abs(df['LowestPrice'].astype(float) - df['ClosePrice'].astype(float).shift())
     df['tr'] = df[['high_low', 'high_close', 'low_close']].max(axis=1)
     df['atr_14'] = df['tr'].rolling(window=14).mean()
     

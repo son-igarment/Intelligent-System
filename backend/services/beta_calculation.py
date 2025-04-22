@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 def calculate_daily_returns(prices):
     """Calculate daily returns from a series of prices"""
-    return (prices / prices.shift(1) - 1).dropna()
+    return (prices.astype(float) / prices.astype(float).shift(1) - 1).dropna()
 
 def calculate_beta(stock_returns, market_returns):
     """
@@ -42,7 +42,8 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
     """
     if date is None:
         # Use the latest date in the dataset
-        date = stock_data['TradeDate'].max()
+        date = max(stock_data['TradeDate'].values, key=lambda d: datetime.strptime(d, '%m/%d/%Y'))
+
     else:
         # Convert string date to datetime if needed
         if isinstance(date, str):
@@ -56,8 +57,8 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
     market_data = market_data.sort_values('TradeDate')
     
     # Calculate daily returns
-    stock_df['Returns'] = calculate_daily_returns(stock_df['CurrentIndex'])
-    market_data['Returns'] = calculate_daily_returns(market_data['BasicIndex'])
+    stock_df['Returns'] = calculate_daily_returns(stock_df['ClosePrice'])
+    market_data['Returns'] = calculate_daily_returns(market_data['CurrentIndex'])
     
     # Adjust calculation window based on prediction horizon
     if days_to_predict <= 2:  # For short-term predictions (1-2 days)
@@ -69,7 +70,7 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
     
     # Get data for the specified window from the given date
     end_date = date
-    start_date = (datetime.strptime(end_date, '%Y-%m-%d') - timedelta(days=days_window)).strftime('%Y-%m-%d')
+    start_date = (datetime.strptime(end_date, '%m/%d/%Y') - timedelta(days=days_window)).strftime('%m/%d/%Y')
     
     stock_period = stock_df[(stock_df['TradeDate'] >= start_date) & (stock_df['TradeDate'] <= end_date)]
     market_period = market_data[(market_data['TradeDate'] >= start_date) & (market_data['TradeDate'] <= end_date)]
@@ -85,7 +86,7 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
     
     # Merge data on date to align the returns
     merged_data = pd.merge(
-        stock_period[['TradeDate', 'Returns']], 
+        stock_period[['TradeDate', 'Returns']],
         market_period[['TradeDate', 'Returns']], 
         on='TradeDate', 
         suffixes=('_stock', '_market')
