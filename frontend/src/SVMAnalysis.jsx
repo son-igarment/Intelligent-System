@@ -64,7 +64,8 @@ function SVMAnalysis({ onClose, onMenuChange }) {
           date: new Date().toLocaleString(),
           days_to_predict: parseInt(daysToPrediction),
           accuracy: data.model_metrics.accuracy,
-          predictions: data.predictions
+          predictions: data.predictions,
+          use_beta: useBeta
         });
         alert(`Phân tích SVM hoàn tất với độ chính xác ${(data.model_metrics.accuracy * 100).toFixed(2)}%`);
       } else {
@@ -136,6 +137,10 @@ function SVMAnalysis({ onClose, onMenuChange }) {
           
           <div className="sidebar-item" onClick={() => onMenuChange('assets')}>
             Assets report
+          </div>
+
+          <div className="sidebar-item" onClick={() => onMenuChange('tool')}>
+            Analyst tool
           </div>
           
           <div className="sidebar-item" onClick={() => onMenuChange('beta')}>
@@ -231,9 +236,14 @@ function SVMAnalysis({ onClose, onMenuChange }) {
                         <h4>Cổ phiếu phân tích</h4>
                         <div className="info-value">{latestAnalysis.predictions.length}</div>
                       </div>
+                      
+                      <div className="info-card">
+                        <h4>Sử dụng Beta</h4>
+                        <div className="info-value">{latestAnalysis.use_beta ? "Có" : "Không"}</div>
+                      </div>
                     </div>
                     
-                    <h4 className="results-title">Dự đoán xu hướng giá</h4>
+                    <h4 className="results-title">Dự đoán xu hướng giá {latestAnalysis.days_to_predict} ngày tới</h4>
                     
                     <div className="predictions-table-container">
                       <table className="predictions-table">

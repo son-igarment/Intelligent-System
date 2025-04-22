@@ -208,10 +208,18 @@ function BetaCalculation({ onClose, onMenuChange }) {
             Assets report
           </div>
           
+          <div className="sidebar-item" onClick={() => onMenuChange('tool')}>
+            Analyst tool
+          </div>
+
           <div className="sidebar-item active">
             Beta Calculation
           </div>
           
+          <div className="sidebar-item" onClick={() => onMenuChange('svm')}>
+            SVM Analysis
+          </div>
+
           <div className="sidebar-item" onClick={() => onMenuChange('import')}>
             Data Import
           </div>

@@ -39,6 +39,14 @@ function AssetReport({ onClose, onMenuChange }) {
             Analyst tool
           </div>
           
+          <div className="sidebar-item" onClick={() => onMenuChange('beta')}>
+            Beta Calculation
+          </div>
+
+          <div className="sidebar-item" onClick={() => onMenuChange('svm')}>
+            SVM Analysis
+          </div>
+
           <div className="sidebar-item" onClick={() => onMenuChange('import')}>
             Data Import
           </div>

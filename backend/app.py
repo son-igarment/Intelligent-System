@@ -5,6 +5,15 @@ import os
 from dotenv import load_dotenv
 import sys
 from pathlib import Path
+import json
+from bson import ObjectId
+
+# Tạo lớp JSONEncoder tùy chỉnh để xử lý ObjectId
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, ObjectId):
+            return str(obj)
+        return super().default(obj)
 
 # Load environment variables
 load_dotenv()
@@ -16,6 +25,9 @@ sys.path.append(str(Path(__file__).parent))
 def create_app():
     app = Flask(__name__)
     CORS(app)
+    
+    # Cấu hình JSONEncoder tùy chỉnh
+    app.json_encoder = CustomJSONEncoder
     
     # Kết nối đến MongoDB
     try:

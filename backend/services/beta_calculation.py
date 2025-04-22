@@ -26,7 +26,7 @@ def calculate_beta(stock_returns, market_returns):
     
     return beta
 
-def get_beta_for_stock(stock_data, market_data, stock_code, date=None):
+def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_predict=5):
     """
     Calculate Beta for a specific stock on a given date (or latest available)
     
@@ -35,6 +35,7 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None):
     market_data (DataFrame): Market index data with Date and Index value
     stock_code (str): The stock code to calculate Beta for
     date (str, optional): Date in format 'YYYY-MM-DD', defaults to latest
+    days_to_predict (int, optional): Number of days to predict ahead, affects Beta calculation window
     
     Returns:
     dict: Beta coefficient and related metrics
@@ -58,9 +59,17 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None):
     stock_df['Returns'] = calculate_daily_returns(stock_df['CurrentIndex'])
     market_data['Returns'] = calculate_daily_returns(market_data['BasicIndex'])
     
-    # Get data for the last 30 days from the given date for more stable beta
+    # Adjust calculation window based on prediction horizon
+    if days_to_predict <= 2:  # For short-term predictions (1-2 days)
+        days_window = 15  # Use 15 days of data
+    elif days_to_predict <= 5:  # For medium-term predictions (3-5 days)
+        days_window = 30  # Use 30 days of data
+    else:  # For long-term predictions (> 5 days)
+        days_window = 60  # Use 60 days of data
+    
+    # Get data for the specified window from the given date
     end_date = date
-    start_date = (datetime.strptime(end_date, '%Y-%m-%d') - timedelta(days=30)).strftime('%Y-%m-%d')
+    start_date = (datetime.strptime(end_date, '%Y-%m-%d') - timedelta(days=days_window)).strftime('%Y-%m-%d')
     
     stock_period = stock_df[(stock_df['TradeDate'] >= start_date) & (stock_df['TradeDate'] <= end_date)]
     market_period = market_data[(market_data['TradeDate'] >= start_date) & (market_data['TradeDate'] <= end_date)]
@@ -103,6 +112,8 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None):
         'period_start': start_date,
         'period_end': end_date,
         'data_points': len(merged_data),
+        'calculation_window': days_window,
+        'prediction_horizon': days_to_predict,
         'avg_stock_return': merged_data['Returns_stock'].mean(),
         'avg_market_return': merged_data['Returns_market'].mean(),
         'interpretation': interpret_beta(beta)

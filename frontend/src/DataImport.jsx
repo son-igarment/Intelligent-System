@@ -192,6 +192,14 @@ function DataImport({ onClose, onMenuChange }) {
           <div className="sidebar-item" onClick={() => onMenuChange('tool')}>
             Analyst tool
           </div>
+
+          <div className="sidebar-item" onClick={() => onMenuChange('beta')}>
+            Beta Calculation
+          </div>
+
+          <div className="sidebar-item" onClick={() => onMenuChange('svm')}>
+            SVM Analysis
+          </div>
           
           <div className="sidebar-item active">
             Data Import

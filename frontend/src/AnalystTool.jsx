@@ -35,6 +35,14 @@ function AnalystTool({ onClose, onMenuChange }) {
           <div className="sidebar-item active">
             Analyst tool
           </div>
+
+          <div className="sidebar-item" onClick={() => onMenuChange('beta')}>
+            Beta Calculation
+          </div>
+
+          <div className="sidebar-item" onClick={() => onMenuChange('svm')}>
+            SVM Analysis
+          </div>
           
           <div className="sidebar-item" onClick={() => onMenuChange('import')}>
             Data Import

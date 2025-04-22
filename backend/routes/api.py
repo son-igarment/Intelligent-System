@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 from services.beta_calculation import calculate_all_stock_betas, get_beta_for_stock, get_beta_portfolio
 from services.svm_analysis import analyze_stocks_with_svm
+from bson import ObjectId
 
 api = Blueprint('api', __name__)
 
@@ -90,10 +91,11 @@ def import_data():
         
         # Lưu thông tin import
         import_id = current_app.db.imports.insert_one(import_info).inserted_id
+        import_id_str = str(import_id)
         
         # Thêm import_id vào mỗi record
         for record in data:
-            record['import_id'] = str(import_id)
+            record['import_id'] = import_id_str
         
         # Lưu dữ liệu vào collection "stock_data"
         current_app.db.stock_data.insert_many(data)
@@ -101,7 +103,7 @@ def import_data():
         return jsonify({
             "status": "success", 
             "message": f"Imported {len(data)} records successfully",
-            "import_id": str(import_id)
+            "import_id": import_id_str
         }), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -174,23 +176,25 @@ def calculate_beta_and_train_svm():
         # Trong thực tế, ở đây sẽ gọi hàm tính Beta và train SVM
         # Mô phỏng kết quả tính toán
         calculation_result = {
-            "calculation_id": str(datetime.now().strftime("%Y%m%d%H%M%S")),
-            "calculation_date": str(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-            "data_count": str(len(data)),
+            "calculation_id": datetime.now().strftime("%Y%m%d%H%M%S"),
+            "calculation_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "data_count": len(data),
             "beta_values": {
-                "stock1": "1.25",
-                "stock2": "0.85",
-                "stock3": "1.05"
+                "stock1": 1.25,
+                "stock2": 0.85,
+                "stock3": 1.05
             },
             "svm_model": {
-                "accuracy": "0.92",
-                "precision": "0.89",
-                "recall": "0.93"
+                "accuracy": 0.92,
+                "precision": 0.89,
+                "recall": 0.93
             }
         }
         
         # Lưu kết quả tính toán
-        current_app.db.calculations.insert_one(calculation_result.copy())
+        result = current_app.db.calculations.insert_one(calculation_result)
+        # Chuyển đổi ObjectId thành string
+        calculation_result["_id"] = str(result.inserted_id)
         
         return jsonify({
             "status": "success",
@@ -212,6 +216,7 @@ def calculate_beta():
         request_data = request.json or {}
         date = request_data.get('date')  # Optional date parameter
         stock_code = request_data.get('stock_code')  # Optional specific stock
+        days_to_predict = request_data.get('days_to_predict', 5)  # Default to 5 days
         
         # Retrieve stock data from MongoDB
         stock_data = list(current_app.db.stock_data.find({}, {'_id': 0}))
@@ -233,40 +238,55 @@ def calculate_beta():
         
         # Calculate beta
         if stock_code:
-            # Calculate beta for a specific stock
-            result = get_beta_for_stock(stock_df, market_df, stock_code, date)
+            # Calculate beta for a specific stock with days_to_predict parameter
+            result = get_beta_for_stock(stock_df, market_df, stock_code, date, days_to_predict)
             
             # Store the result in MongoDB
             if result['beta'] is not None:
-                current_app.db.beta_values.insert_one({
+                beta_record = {
                     'stock_code': result['stock_code'],
                     'date': result['date'],
                     'beta': result['beta'],
                     'calculation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    'interpretation': result['interpretation']
-                })
+                    'interpretation': result['interpretation'],
+                    'prediction_horizon': days_to_predict
+                }
+                insert_result = current_app.db.beta_values.insert_one(beta_record)
+                result['_id'] = str(insert_result.inserted_id)
             
             return jsonify(result)
         else:
-            # Calculate beta for all stocks
-            results = calculate_all_stock_betas(stock_df, market_df, date)
+            # Calculate beta for all stocks with days_to_predict parameter
+            # Modify calculate_all_stock_betas to include days_to_predict
+            results = []
+            for code in stock_df['MarketCode'].unique():
+                beta_result = get_beta_for_stock(stock_df, market_df, code, date, days_to_predict)
+                results.append(beta_result)
+            
+            results_df = pd.DataFrame(results)
             
             # Store results in MongoDB
             beta_records = []
-            for _, row in results.iterrows():
+            inserted_ids = []
+            for _, row in results_df.iterrows():
                 if row['beta'] is not None:
-                    beta_records.append({
+                    beta_record = {
                         'stock_code': row['stock_code'],
                         'date': row['date'],
                         'beta': float(row['beta']),
                         'calculation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        'interpretation': row['interpretation']
-                    })
+                        'interpretation': row['interpretation'],
+                        'prediction_horizon': days_to_predict
+                    }
+                    beta_records.append(beta_record)
             
             if beta_records:
-                current_app.db.beta_values.insert_many(beta_records)
+                result = current_app.db.beta_values.insert_many(beta_records)
+                for i, id in enumerate(result.inserted_ids):
+                    if i < len(results):
+                        results[i]['_id'] = str(id)
             
-            return jsonify(results.to_dict(orient='records'))
+            return jsonify(results)
     
     except Exception as e:
         print(f"Error calculating beta: {str(e)}")
@@ -310,13 +330,15 @@ def calculate_portfolio_beta():
         
         # Store the result in MongoDB
         if result['portfolio_beta'] is not None:
-            current_app.db.portfolio_betas.insert_one({
+            portfolio_record = {
                 'portfolio': portfolio,
                 'date': result['date'],
                 'portfolio_beta': result['portfolio_beta'],
                 'calculation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'interpretation': result['interpretation']
-            })
+            }
+            insert_result = current_app.db.portfolio_betas.insert_one(portfolio_record)
+            result['_id'] = str(insert_result.inserted_id)
         
         return jsonify(result)
     
@@ -347,7 +369,45 @@ def svm_analysis():
         # Get beta values if requested
         beta_values = None
         if use_beta:
-            beta_data = list(current_app.db.beta_values.find({}, {'_id': 0}))
+            # Lấy giá trị beta phù hợp với khoảng thời gian dự đoán
+            beta_data = list(current_app.db.beta_values.find(
+                {'prediction_horizon': days_to_predict},
+                {'_id': 0}
+            ))
+            
+            # Nếu không có beta values phù hợp với khoảng thời gian, tính toán mới
+            if not beta_data:
+                print(f"No beta values found for prediction horizon {days_to_predict}, calculating new ones...")
+                
+                # Lấy thị trường để tính beta
+                market_data = list(current_app.db.market_index.find({}, {'_id': 0}))
+                if not market_data:
+                    market_df = stock_df[stock_df['IndexCode'] == 'VNIndex'].copy()
+                    if market_df.empty:
+                        return jsonify({"error": "No market index data available for beta calculation"}), 404
+                else:
+                    market_df = pd.DataFrame(market_data)
+                
+                # Tính beta cho tất cả cổ phiếu
+                beta_records = []
+                for code in stock_df['MarketCode'].unique():
+                    beta_result = get_beta_for_stock(stock_df, market_df, code, None, days_to_predict)
+                    if beta_result['beta'] is not None:
+                        beta_records.append({
+                            'stock_code': beta_result['stock_code'],
+                            'date': beta_result['date'],
+                            'beta': float(beta_result['beta']),
+                            'calculation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            'interpretation': beta_result['interpretation'],
+                            'prediction_horizon': days_to_predict
+                        })
+                
+                # Lưu vào database
+                if beta_records:
+                    current_app.db.beta_values.insert_many(beta_records)
+                    beta_data = beta_records
+            
+            # Chuyển đổi thành DataFrame
             if beta_data:
                 beta_values = pd.DataFrame(beta_data)
         
@@ -362,7 +422,8 @@ def svm_analysis():
             "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "days_to_predict": days_to_predict,
             "accuracy": analysis_result["model_metrics"]["accuracy"],
-            "predictions": analysis_result["predictions"]
+            "predictions": analysis_result["predictions"],
+            "use_beta": use_beta
         }
         
         current_app.db.svm_analyses.insert_one(analysis_record)
@@ -371,6 +432,8 @@ def svm_analysis():
     
     except Exception as e:
         print(f"Error performing SVM analysis: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"Error performing SVM analysis: {str(e)}"}), 500
 
 # Endpoint to get the latest SVM analysis

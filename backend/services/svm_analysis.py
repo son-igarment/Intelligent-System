@@ -35,6 +35,14 @@ def prepare_features(stock_data, beta_values, days_to_predict=5):
     all_stock_codes = []
     all_dates = []
     
+    # Điều chỉnh ngưỡng phần trăm dựa trên days_to_predict
+    if days_to_predict <= 2:
+        threshold_pct = 0.5  # Ngưỡng thấp hơn cho dự đoán ngắn hạn
+    else:
+        threshold_pct = 1.0  # Ngưỡng mặc định
+        
+    print(f"Using threshold of {threshold_pct}% for price movement classification with days_to_predict={days_to_predict}")
+    
     for stock_code, group in grouped:
         # Skip if less than 10 data points
         if len(group) < 10:
@@ -79,14 +87,14 @@ def prepare_features(stock_data, beta_values, days_to_predict=5):
             future_price = group.iloc[i + days_to_predict]['CurrentIndex']
             current_price = current_data['CurrentIndex']
             
-            # Classify as 1 (up), 0 (neutral), -1 (down)
+            # Classify as 1 (up), 0 (neutral), -1 (down) with adjusted thresholds
             percent_change = (future_price - current_price) / current_price * 100
             
-            if percent_change > 1.0:  # Up more than 1%
+            if percent_change > threshold_pct:  # Up more than threshold_pct
                 target = 1
-            elif percent_change < -1.0:  # Down more than 1%
+            elif percent_change < -threshold_pct:  # Down more than threshold_pct
                 target = -1
-            else:  # Between -1% and 1%
+            else:  # Between -threshold_pct and threshold_pct
                 target = 0
             
             all_features.append(features)
@@ -139,16 +147,17 @@ def calculate_technical_indicators(df):
     
     return df
 
-def train_svm_model(X, y):
+def train_svm_model(X, y, days_to_predict=5):
     """
     Train an SVM model for stock prediction
     
     Parameters:
     X (array): Feature matrix
     y (array): Target vector
+    days_to_predict (int): Number of days to predict ahead
     
     Returns:
-    tuple: (model, scaler, accuracy, report)
+    tuple: (model, scaler, accuracy, report, confusion_matrix)
     """
     # Split the data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -158,34 +167,68 @@ def train_svm_model(X, y):
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
     
-    # Train SVM with different kernels
+    # Kernels và tham số dựa vào khoảng thời gian dự đoán
     kernels = ['linear', 'rbf', 'poly']
+    
+    # Điều chỉnh C based on prediction horizon
+    if days_to_predict <= 2:
+        # Khoảng thời gian ngắn cần một mô hình ít regularization hơn
+        C_values = [0.5, 1.0, 2.0]
+    else:
+        # Khoảng thời gian dài cần một mô hình với nhiều regularization hơn
+        C_values = [0.1, 1.0, 5.0]
+    
     best_accuracy = 0
     best_model = None
     best_report = None
     
     for kernel in kernels:
-        model = SVC(kernel=kernel, C=1.0, gamma='scale', random_state=42)
-        model.fit(X_train_scaled, y_train)
-        
-        # Predict on test set
-        y_pred = model.predict(X_test_scaled)
-        
-        # Calculate accuracy
-        accuracy = accuracy_score(y_test, y_pred)
-        report = classification_report(y_test, y_pred, output_dict=True)
-        
-        # Save the best model
-        if accuracy > best_accuracy:
-            best_accuracy = accuracy
-            best_model = model
-            best_report = report
+        for C in C_values:
+            model = SVC(kernel=kernel, C=C, gamma='scale', random_state=42)
+            model.fit(X_train_scaled, y_train)
+            
+            # Predict on test set
+            y_pred = model.predict(X_test_scaled)
+            
+            # Calculate accuracy
+            accuracy = accuracy_score(y_test, y_pred)
+            report = classification_report(y_test, y_pred, output_dict=True)
+            
+            # Save the best model
+            if accuracy > best_accuracy:
+                best_accuracy = accuracy
+                best_model = model
+                best_report = report
     
     # Get confusion matrix
     y_pred = best_model.predict(X_test_scaled)
     cm = confusion_matrix(y_test, y_pred)
     
-    return best_model, scaler, best_accuracy, best_report, cm
+    # Đảm bảo report có thể serializable
+    processed_report = {}
+    for key, value in best_report.items():
+        if isinstance(value, dict):
+            processed_report[key] = {}
+            for metric, metric_value in value.items():
+                if hasattr(metric_value, 'item') or hasattr(metric_value, 'tolist'):
+                    processed_report[key][metric] = float(metric_value)
+                else:
+                    processed_report[key][metric] = metric_value
+        else:
+            if hasattr(value, 'item') or hasattr(value, 'tolist'):
+                processed_report[key] = float(value)
+            else:
+                processed_report[key] = value
+    
+    # Chuyển confusion matrix thành list
+    cm_list = cm.tolist()
+    
+    # Đảm bảo accuracy là float
+    accuracy = float(best_accuracy)
+    
+    print(f"Trained SVM model for days_to_predict={days_to_predict} with accuracy: {accuracy:.4f}")
+    
+    return best_model, scaler, accuracy, processed_report, cm_list
 
 def predict_stock_movement(model, scaler, features):
     """
@@ -228,6 +271,9 @@ def analyze_stocks_with_svm(stock_data, beta_values, days_to_predict=5):
     Returns:
     dict: Analysis results and predictions
     """
+    # Log thông tin phân tích
+    print(f"Starting SVM analysis with days_to_predict={days_to_predict} and beta_values usage: {beta_values is not None}")
+    
     # Prepare features and targets
     X, y, stock_codes, dates = prepare_features(stock_data, beta_values, days_to_predict)
     
@@ -237,8 +283,8 @@ def analyze_stocks_with_svm(stock_data, beta_values, days_to_predict=5):
             "error": "Insufficient data for analysis"
         }
     
-    # Train SVM model
-    model, scaler, accuracy, report, confusion_matrix = train_svm_model(X, y)
+    # Train SVM model with days_to_predict
+    model, scaler, accuracy, report, confusion_matrix = train_svm_model(X, y, days_to_predict)
     
     # Get unique stock codes
     unique_stocks = list(set(stock_codes))
@@ -262,11 +308,21 @@ def analyze_stocks_with_svm(stock_data, beta_values, days_to_predict=5):
             
             # Get beta value
             beta = None
+            beta_interpretation = None
             if beta_values is not None:
                 beta_row = beta_values[beta_values['stock_code'] == stock_code]
                 if not beta_row.empty:
-                    beta = beta_row.iloc[0]['beta']
+                    beta_value = beta_row.iloc[0]['beta']
+                    # Đảm bảo beta là kiểu float hoặc None
+                    beta = float(beta_value) if beta_value is not None else None
                     beta_interpretation = beta_row.iloc[0]['interpretation']
+            
+            # Xác định confidence từ report
+            confidence = None
+            if str(prediction) in report:
+                confidence_value = report[str(prediction)]['precision']
+                # Đảm bảo confidence là kiểu float hoặc None
+                confidence = float(confidence_value) if confidence_value is not None else None
             
             # Add to predictions
             predictions.append({
@@ -276,20 +332,24 @@ def analyze_stocks_with_svm(stock_data, beta_values, days_to_predict=5):
                 "signal": signal,
                 "date": dates[latest_index].strftime("%Y-%m-%d"),
                 "beta": beta,
-                "beta_interpretation": beta_interpretation if beta is not None else None,
-                "confidence": float(report[str(prediction)]['precision']) if str(prediction) in report else None
+                "beta_interpretation": beta_interpretation,
+                "confidence": confidence,
+                "days_ahead": days_to_predict
             })
     
     # Sort predictions by confidence
     predictions = sorted(predictions, key=lambda x: x['confidence'] if x['confidence'] else 0, reverse=True)
+    
+    print(f"Completed SVM analysis with {len(predictions)} predictions for days_ahead={days_to_predict}")
     
     return {
         "success": True,
         "model_metrics": {
             "accuracy": accuracy,
             "report": report,
-            "confusion_matrix": confusion_matrix.tolist()
+            "confusion_matrix": confusion_matrix
         },
         "predictions": predictions,
-        "days_ahead": days_to_predict
+        "days_ahead": days_to_predict,
+        "beta_used": beta_values is not None
     } 
