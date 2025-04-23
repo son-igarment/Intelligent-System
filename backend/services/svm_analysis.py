@@ -259,97 +259,138 @@ def get_prediction_label(prediction):
     else:
         return "Giảm giá", "strong_sell"
 
-def analyze_stocks_with_svm(stock_data, beta_values, days_to_predict=5):
+def analyze_stocks_with_svm(stock_data, beta_values, days_to_predict=5, market_code=None, ticker=None):
     """
-    Analyze stocks using SVM and return predictions and model metrics
+    Analyze stocks with SVM model to predict price movements
     
     Parameters:
     stock_data (DataFrame): Historical stock data
-    beta_values (DataFrame): Beta values for the stocks
+    beta_values (DataFrame): Beta values (optional)
     days_to_predict (int): Number of days to predict ahead
+    market_code (str, optional): MarketCode to filter (e.g., "HOSE", "HNX")
+    ticker (str, optional): Ticker symbol to filter (e.g., "VLA", "MCF")
     
     Returns:
-    dict: Analysis results and predictions
+    dict: Result of SVM analysis including predictions and metrics
     """
-    # Log thông tin phân tích
-    print(f"Starting SVM analysis with days_to_predict={days_to_predict} and beta_values usage: {beta_values is not None}")
-    
-    # Prepare features and targets
-    X, y, stock_codes, dates = prepare_features(stock_data, beta_values, days_to_predict)
-    
-    if len(X) == 0:
-        return {
-            "success": False,
-            "error": "Insufficient data for analysis"
-        }
-    
-    # Train SVM model with days_to_predict
-    model, scaler, accuracy, report, confusion_matrix = train_svm_model(X, y, days_to_predict)
-    
-    # Get unique stock codes
-    unique_stocks = list(set(stock_codes))
-    
-    # Generate predictions for latest data for each stock
-    predictions = []
-    
-    for stock_code in unique_stocks:
-        stock_indices = [i for i, code in enumerate(stock_codes) if code == stock_code]
+    try:
+        # Filter the stock data if market_code or ticker is specified
+        filtered_data = stock_data.copy()
         
-        if stock_indices:
-            # Get latest data point
-            latest_index = max(stock_indices)
-            latest_features = X[latest_index]
+        if market_code:
+            filtered_data = filtered_data[filtered_data['MarketCode'] == market_code]
+            if filtered_data.empty:
+                return {
+                    "success": False,
+                    "error": f"No data found for MarketCode: {market_code}"
+                }
+        
+        if ticker:
+            filtered_data = filtered_data[filtered_data['Ticker'] == ticker]
+            if filtered_data.empty:
+                return {
+                    "success": False,
+                    "error": f"No data found for Ticker: {ticker}"
+                }
+        
+        # Prepare features
+        X, y, dates, stock_codes = prepare_features(filtered_data, beta_values, days_to_predict)
+        
+        if len(X) == 0 or len(y) == 0:
+            return {
+                "success": False,
+                "error": "Insufficient data for analysis after filtering"
+            }
+        
+        # Split into training and testing sets
+        X_train, X_test, y_train, y_test, train_indices, test_indices = train_test_split(
+            X, y, range(len(X)), test_size=0.2, random_state=42
+        )
+        
+        # Standardize features
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
+        
+        # Train SVM model
+        model = SVC(kernel='rbf', C=1.0, gamma='scale', probability=True)
+        model.fit(X_train_scaled, y_train)
+        
+        # Evaluate model
+        y_pred = model.predict(X_test_scaled)
+        accuracy = accuracy_score(y_test, y_pred)
+        report = classification_report(y_test, y_pred, output_dict=True)
+        confusion = confusion_matrix(y_test, y_pred).tolist()
+        
+        # Get predictions for all samples
+        all_scaled = scaler.transform(X)
+        all_probas = model.predict_proba(all_scaled)
+        
+        # Prepare predictions
+        predictions = []
+        
+        for i, stock_code in enumerate(stock_codes):
+            class_idx = model.predict([all_scaled[i]])[0]
             
-            # Predict
-            prediction = predict_stock_movement(model, scaler, latest_features)
+            # Convert class_idx to signal
+            signal = "neutral"
+            prediction_label = "Đi ngang"
             
-            # Get prediction label
-            label, signal = get_prediction_label(prediction)
+            if class_idx == 1:  # Up class
+                signal = "strong_buy"
+                prediction_label = "Tăng"
+            elif class_idx == -1:  # Down class
+                signal = "strong_sell"
+                prediction_label = "Giảm"
             
-            # Get beta value
+            # Get beta value and interpretation if available
             beta = None
             beta_interpretation = None
-            if beta_values is not None:
+            
+            if beta_values is not None and not beta_values.empty:
                 beta_row = beta_values[beta_values['stock_code'] == stock_code]
                 if not beta_row.empty:
-                    beta_value = beta_row.iloc[0]['beta']
-                    # Đảm bảo beta là kiểu float hoặc None
-                    beta = float(beta_value) if beta_value is not None else None
+                    beta = beta_row.iloc[0]['beta']
                     beta_interpretation = beta_row.iloc[0]['interpretation']
             
-            # Xác định confidence từ report
+            # Get confidence from probability
             confidence = None
-            if str(prediction) in report:
-                confidence_value = report[str(prediction)]['precision']
-                # Đảm bảo confidence là kiểu float hoặc None
-                confidence = float(confidence_value) if confidence_value is not None else None
+            if len(all_probas[i]) > 1:  # Binary or multiclass
+                confidence = all_probas[i][model.classes_.tolist().index(class_idx)]
+            else:  # Single class
+                confidence = 1.0
             
-            # Add to predictions
             predictions.append({
-                "stock_code": stock_code,
-                "prediction": int(prediction),
-                "prediction_label": label,
-                "signal": signal,
-                "date": dates[latest_index].strftime("%Y-%m-%d"),
-                "beta": beta,
-                "beta_interpretation": beta_interpretation,
-                "confidence": confidence,
-                "days_ahead": days_to_predict
+                'stock_code': stock_code,
+                'prediction': int(class_idx),
+                'prediction_label': prediction_label,
+                'signal': signal,
+                'confidence': float(confidence) if confidence is not None else None,
+                'beta': float(beta) if beta is not None else None,
+                'beta_interpretation': beta_interpretation
             })
+        
+        # Sort predictions by confidence
+        predictions = sorted(predictions, key=lambda x: x['confidence'] if x['confidence'] else 0, reverse=True)
+        
+        print(f"Completed SVM analysis with {len(predictions)} predictions for days_ahead={days_to_predict}")
+        
+        return {
+            "success": True,
+            "model_metrics": {
+                "accuracy": accuracy,
+                "report": report,
+                "confusion_matrix": confusion
+            },
+            "predictions": predictions,
+            "days_ahead": days_to_predict,
+            "beta_used": beta_values is not None
+        }
     
-    # Sort predictions by confidence
-    predictions = sorted(predictions, key=lambda x: x['confidence'] if x['confidence'] else 0, reverse=True)
-    
-    print(f"Completed SVM analysis with {len(predictions)} predictions for days_ahead={days_to_predict}")
-    
-    return {
-        "success": True,
-        "model_metrics": {
-            "accuracy": accuracy,
-            "report": report,
-            "confusion_matrix": confusion_matrix
-        },
-        "predictions": predictions,
-        "days_ahead": days_to_predict,
-        "beta_used": beta_values is not None
-    } 
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e)
+        }

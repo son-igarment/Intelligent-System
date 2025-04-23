@@ -3,24 +3,90 @@ import './App.css';
 
 function SVMAnalysis({ onClose, onMenuChange }) {
   const currentDate = "2025-03-28";
+  const [stocks, setStocks] = useState([]);
+  const [tickers, setTickers] = useState([]);
+  const [filteredTickers, setFilteredTickers] = useState([]);
+  const [allData, setAllData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [daysToPrediction, setDaysToPrediction] = useState(5);
   const [useBeta, setUseBeta] = useState(true);
   const [analysisResults, setAnalysisResults] = useState(null);
   const [latestAnalysis, setLatestAnalysis] = useState(null);
+  const [selectedStock, setSelectedStock] = useState('');
+  const [selectedTicker, setSelectedTicker] = useState('');
 
-  // Fetch latest analysis on component load
+  // Fetch stocks and tickers on component load
   useEffect(() => {
+    fetchStocksAndTickers();
     fetchLatestAnalysis();
   }, []);
+
+  // Update filtered tickers when MarketCode changes
+  useEffect(() => {
+    if (selectedStock) {
+      const filtered = allData
+        .filter(item => item.MarketCode === selectedStock)
+        .map(item => item.Ticker);
+      setFilteredTickers([...new Set(filtered)]);
+      setSelectedTicker(''); // Reset ticker selection when MarketCode changes
+    } else {
+      // If no MarketCode selected, show all tickers
+      setFilteredTickers(tickers);
+    }
+  }, [selectedStock, allData, tickers]);
+
+  // Fetch available stocks and tickers
+  const fetchStocksAndTickers = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await fetch('http://localhost:5000/api/stock-data');
+      const data = await response.json();
+      
+      if (response.ok) {
+        // Store all data for filtering
+        setAllData(data);
+        
+        // Extract unique market codes (HNX, HOSE, etc.)
+        const uniqueMarketCodes = [...new Set(data.map(item => item.MarketCode))];
+        setStocks(uniqueMarketCodes);
+        
+        // Extract unique ticker symbols (VLA, MCF, BXH, etc.)
+        const uniqueTickers = [...new Set(data.map(item => item.Ticker))];
+        setTickers(uniqueTickers);
+        setFilteredTickers(uniqueTickers); // Initialize filtered tickers with all tickers
+      } else {
+        setError('Không thể lấy dữ liệu cổ phiếu');
+      }
+    } catch (err) {
+      setError(`Lỗi khi tải dữ liệu: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Fetch latest SVM analysis
   const fetchLatestAnalysis = async () => {
     try {
       setLoading(true);
       
-      const response = await fetch('http://localhost:5000/api/latest-svm-analysis');
+      // Build query parameters for market_code and ticker if selected
+      let queryParams = new URLSearchParams();
+      if (selectedStock) {
+        queryParams.append('market_code', selectedStock);
+      }
+      if (selectedTicker) {
+        queryParams.append('ticker', selectedTicker);
+      }
+      
+      // Add query parameters to URL if present
+      const url = queryParams.toString() 
+        ? `http://localhost:5000/api/latest-svm-analysis?${queryParams.toString()}`
+        : 'http://localhost:5000/api/latest-svm-analysis';
+      
+      const response = await fetch(url);
       
       if (response.ok) {
         const data = await response.json();
@@ -45,15 +111,26 @@ function SVMAnalysis({ onClose, onMenuChange }) {
       setLoading(true);
       setError('');
       
+      const requestBody = {
+        days_to_predict: parseInt(daysToPrediction),
+        use_beta: useBeta
+      };
+      
+      // Add market_code and ticker to the request if selected
+      if (selectedStock) {
+        requestBody.market_code = selectedStock;
+      }
+      
+      if (selectedTicker) {
+        requestBody.ticker = selectedTicker;
+      }
+      
       const response = await fetch('http://localhost:5000/api/svm-analysis', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          days_to_predict: parseInt(daysToPrediction),
-          use_beta: useBeta
-        })
+        body: JSON.stringify(requestBody)
       });
       
       const data = await response.json();
@@ -116,6 +193,13 @@ function SVMAnalysis({ onClose, onMenuChange }) {
     return 'red';
   };
 
+  // Fetch latest analysis when stock or ticker changes
+  useEffect(() => {
+    if (selectedStock || selectedTicker) {
+      fetchLatestAnalysis();
+    }
+  }, [selectedStock, selectedTicker]);
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
@@ -160,7 +244,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
         <div className="dashboard-main">
           <div className="report-container">
             <div className="report-header">
-              <h2 className="report-title">SVM PRICE PREDICTION</h2>
+              <h2 className="report-title">SVM Analysis</h2>
               
               <div className="report-dates">
                 <div>Analysis date: <strong>{latestAnalysis ? latestAnalysis.date : currentDate}</strong></div>
@@ -168,17 +252,41 @@ function SVMAnalysis({ onClose, onMenuChange }) {
             </div>
             
             {/* Analysis Controls */}
-            <div className="svm-container">
-              <div className="svm-controls">
+            <div className="beta-calculation-container">
+              <div className="calculation-section">
                 <h3 className="section-title">Phân tích dự đoán với SVM</h3>
                 
-                <div className="settings-row">
-                  <div className="setting-group">
+                <div className="calculation-options">
+                  <div className="option-group">
+                    <select 
+                      value={selectedStock} 
+                      onChange={(e) => setSelectedStock(e.target.value)}
+                      className="stock-select"
+                    >
+                      <option value="">-- Chọn market code --</option>
+                      {stocks.map(stock => (
+                        <option key={stock} value={stock}>{stock}</option>
+                      ))}
+                    </select>
+                    
+                    <select 
+                      value={selectedTicker} 
+                      onChange={(e) => setSelectedTicker(e.target.value)}
+                      className="ticker-select"
+                    >
+                      <option value="">-- Chọn ticker --</option>
+                      {filteredTickers.map(ticker => (
+                        <option key={ticker} value={ticker}>{ticker}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="option-group">
                     <label>Số ngày dự báo:</label>
                     <select 
                       value={daysToPrediction} 
                       onChange={(e) => setDaysToPrediction(e.target.value)}
-                      className="setting-select"
+                      className="stock-select"
                     >
                       <option value="1">1 ngày</option>
                       <option value="3">3 ngày</option>
@@ -189,7 +297,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
                     </select>
                   </div>
                   
-                  <div className="setting-group">
+                  <div className="option-group">
                     <label>Sử dụng hệ số Beta:</label>
                     <div className="toggle-container">
                       <input 
@@ -204,7 +312,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
                   </div>
                   
                   <button 
-                    className="run-analysis-btn" 
+                    className="calculate-btn" 
                     onClick={runSVMAnalysis}
                     disabled={loading}
                   >
@@ -218,35 +326,41 @@ function SVMAnalysis({ onClose, onMenuChange }) {
                   </div>
                 )}
                 
+                {loading && (
+                  <div className="loading-indicator">
+                    <p>Đang thực hiện phân tích SVM...</p>
+                  </div>
+                )}
+                
                 {/* Analysis Results */}
                 {latestAnalysis && latestAnalysis.predictions && (
-                  <div className="svm-results">
+                  <div className="results-section">
                     <div className="results-summary">
-                      <div className="accuracy-card">
+                      <div className="result-card">
                         <h4>Độ chính xác</h4>
-                        <div className="accuracy-value">{(latestAnalysis.accuracy * 100).toFixed(2)}%</div>
+                        <div className="result-value">{(latestAnalysis.accuracy * 100).toFixed(2)}%</div>
                       </div>
                       
-                      <div className="info-card">
+                      <div className="result-card">
                         <h4>Dự báo</h4>
-                        <div className="info-value">{latestAnalysis.days_to_predict} ngày</div>
+                        <div className="result-value">{latestAnalysis.days_to_predict} ngày</div>
                       </div>
                       
-                      <div className="info-card">
+                      <div className="result-card">
                         <h4>Cổ phiếu phân tích</h4>
-                        <div className="info-value">{latestAnalysis.predictions.length}</div>
+                        <div className="result-value">{latestAnalysis.predictions.length}</div>
                       </div>
                       
-                      <div className="info-card">
+                      <div className="result-card">
                         <h4>Sử dụng Beta</h4>
-                        <div className="info-value">{latestAnalysis.use_beta ? "Có" : "Không"}</div>
+                        <div className="result-value">{latestAnalysis.use_beta ? "Có" : "Không"}</div>
                       </div>
                     </div>
                     
                     <h4 className="results-title">Dự đoán xu hướng giá {latestAnalysis.days_to_predict} ngày tới</h4>
                     
-                    <div className="predictions-table-container">
-                      <table className="predictions-table">
+                    <div className="beta-results-table">
+                      <table className="beta-table">
                         <thead>
                           <tr>
                             <th>Mã CK</th>
@@ -326,4 +440,4 @@ function SVMAnalysis({ onClose, onMenuChange }) {
   );
 }
 
-export default SVMAnalysis; 
+export default SVMAnalysis;
