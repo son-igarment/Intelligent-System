@@ -598,6 +598,8 @@ def svm_analysis():
         request_data = request.json or {}
         days_to_predict = request_data.get('days_to_predict', 5)
         use_beta = request_data.get('use_beta', True)
+        market_code = request_data.get('market_code')
+        ticker = request_data.get('ticker')
         
         # Get stock data from MongoDB
         stock_data = list(current_app.db.stock_data.find({}, {'_id': 0}))
@@ -685,8 +687,8 @@ def svm_analysis():
             if beta_data:
                 beta_values = pd.DataFrame(beta_data)
         
-        # Perform SVM analysis
-        analysis_result = analyze_stocks_with_svm(stock_df, beta_values, days_to_predict)
+        # Perform SVM analysis with market_code and ticker
+        analysis_result = analyze_stocks_with_svm(stock_df, beta_values, days_to_predict, market_code, ticker)
         
         if not analysis_result["success"]:
             return jsonify({"error": analysis_result["error"]}), 400
@@ -697,7 +699,9 @@ def svm_analysis():
             "days_to_predict": days_to_predict,
             "accuracy": analysis_result["model_metrics"]["accuracy"],
             "predictions": analysis_result["predictions"],
-            "use_beta": use_beta
+            "use_beta": use_beta,
+            "market_code": market_code,
+            "ticker": ticker
         }
         
         current_app.db.svm_analyses.insert_one(analysis_record)
@@ -717,9 +721,20 @@ def get_latest_svm_analysis():
         return jsonify({"error": "Database connection not available"}), 500
     
     try:
-        # Find the latest analysis
+        # Get filter parameters from query
+        market_code = request.args.get('market_code')
+        ticker = request.args.get('ticker')
+        
+        # Build filter query
+        filter_query = {}
+        if market_code:
+            filter_query['market_code'] = market_code
+        if ticker:
+            filter_query['ticker'] = ticker
+            
+        # Find the latest analysis matching filter criteria
         latest_analysis = current_app.db.svm_analyses.find_one(
-            {},
+            filter_query,
             {'_id': 0},
             sort=[('date', -1)]  # Sort by date descending
         )
@@ -731,4 +746,4 @@ def get_latest_svm_analysis():
     
     except Exception as e:
         print(f"Error retrieving latest SVM analysis: {str(e)}")
-        return jsonify({"error": f"Error retrieving latest SVM analysis: {str(e)}"}), 500 
+        return jsonify({"error": f"Error retrieving latest SVM analysis: {str(e)}"}), 500

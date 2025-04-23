@@ -72,7 +72,21 @@ function SVMAnalysis({ onClose, onMenuChange }) {
     try {
       setLoading(true);
       
-      const response = await fetch('http://localhost:5000/api/latest-svm-analysis');
+      // Build query parameters for market_code and ticker if selected
+      let queryParams = new URLSearchParams();
+      if (selectedStock) {
+        queryParams.append('market_code', selectedStock);
+      }
+      if (selectedTicker) {
+        queryParams.append('ticker', selectedTicker);
+      }
+      
+      // Add query parameters to URL if present
+      const url = queryParams.toString() 
+        ? `http://localhost:5000/api/latest-svm-analysis?${queryParams.toString()}`
+        : 'http://localhost:5000/api/latest-svm-analysis';
+      
+      const response = await fetch(url);
       
       if (response.ok) {
         const data = await response.json();
@@ -178,6 +192,13 @@ function SVMAnalysis({ onClose, onMenuChange }) {
     if (beta < 2) return 'orangered';
     return 'red';
   };
+
+  // Fetch latest analysis when stock or ticker changes
+  useEffect(() => {
+    if (selectedStock || selectedTicker) {
+      fetchLatestAnalysis();
+    }
+  }, [selectedStock, selectedTicker]);
 
   return (
     <div className="dashboard-container">
