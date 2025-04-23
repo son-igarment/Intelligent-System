@@ -42,13 +42,8 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
     """
     if date is None:
         # Use the latest date in the dataset
-        # Try to detect the date format
-        sample_date = None
-        if len(stock_data) > 0:
-            sample_date = stock_data['TradeDate'].iloc[0]
-            
-        # Use a flexible approach to parse the latest date
-        date = max(stock_data['TradeDate'].values)
+        date = max(stock_data['TradeDate'].values, key=lambda d: datetime.strptime(d, '%m/%d/%Y'))
+
     else:
         # Convert string date to datetime if needed
         if isinstance(date, str):
@@ -99,37 +94,10 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
     
     # Get data for the specified window from the given date
     end_date = date
+    start_date = (datetime.strptime(end_date, '%m/%d/%Y') - timedelta(days=days_window)).strftime('%m/%d/%Y')
     
-    # Convert the date to datetime for calculations if it's a string
-    if isinstance(end_date, str):
-        try:
-            # Try common formats
-            date_formats = ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d']
-            for fmt in date_formats:
-                try:
-                    end_date_dt = datetime.strptime(end_date, fmt)
-                    break
-                except ValueError:
-                    continue
-        except Exception:
-            # If all formats fail, use a fallback approach
-            end_date_dt = pd.to_datetime(end_date)
-    else:
-        end_date_dt = end_date
-
-    # Calculate start date
-    start_date_dt = end_date_dt - timedelta(days=days_window)
-    
-    # Convert back to string in the same format as original data
-    # We'll rely on pandas comparison which can handle string dates
-    
-    # Filter the period data
-    # For string dates, pandas will handle the comparison based on lexicographical order
-    # This should work for common date formats as long as they are consistent
-    stock_period = stock_df[(stock_df['TradeDate'] >= start_date_dt.strftime('%Y-%m-%d')) & 
-                            (stock_df['TradeDate'] <= end_date)]
-    market_period = market_data[(market_data['TradeDate'] >= start_date_dt.strftime('%Y-%m-%d')) & 
-                               (market_data['TradeDate'] <= end_date)]
+    stock_period = stock_df[(stock_df['TradeDate'] >= start_date) & (stock_df['TradeDate'] <= end_date)]
+    market_period = market_data[(market_data['TradeDate'] >= start_date) & (market_data['TradeDate'] <= end_date)]
     
     # Ensure we have enough data points
     if len(stock_period) < 5 or len(market_period) < 5:
@@ -166,8 +134,8 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
         'stock_code': stock_code,
         'date': end_date,
         'beta': beta,
-        'period_start': start_date_dt.strftime('%Y-%m-%d'),
-        'period_end': end_date if isinstance(end_date, str) else end_date.strftime('%Y-%m-%d'),
+        'period_start': start_date,
+        'period_end': end_date,
         'data_points': len(merged_data),
         'calculation_window': days_window,
         'prediction_horizon': days_to_predict,
