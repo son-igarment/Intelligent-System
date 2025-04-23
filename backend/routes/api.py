@@ -470,6 +470,7 @@ def calculate_portfolio_beta():
         # Convert to DataFrame
         stock_df = pd.DataFrame(stock_data)
         
+        # Thêm phần để tính tickerticker
         # Filter stock data if market_code and/or ticker provided
         if market_code and ticker:
             filtered_stock_df = stock_df[(stock_df['MarketCode'] == market_code) & (stock_df['Ticker'] == ticker)]
