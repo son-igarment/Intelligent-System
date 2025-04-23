@@ -5,6 +5,8 @@ function BetaCalculation({ onClose, onMenuChange }) {
   const currentDate = "2025-03-28";
   const [stocks, setStocks] = useState([]);
   const [tickers, setTickers] = useState([]);
+  const [filteredTickers, setFilteredTickers] = useState([]);
+  const [allData, setAllData] = useState([]);
   const [betaResults, setBetaResults] = useState([]);
   const [selectedStock, setSelectedStock] = useState('');
   const [selectedTicker, setSelectedTicker] = useState('');
@@ -21,6 +23,20 @@ function BetaCalculation({ onClose, onMenuChange }) {
     fetchStocksAndTickers();
   }, []);
 
+  // Update filtered tickers when MarketCode changes
+  useEffect(() => {
+    if (selectedStock) {
+      const filtered = allData
+        .filter(item => item.MarketCode === selectedStock)
+        .map(item => item.Ticker);
+      setFilteredTickers([...new Set(filtered)]);
+      setSelectedTicker(''); // Reset ticker selection when MarketCode changes
+    } else {
+      // If no MarketCode selected, show all tickers
+      setFilteredTickers(tickers);
+    }
+  }, [selectedStock, allData, tickers]);
+
   // Fetch available stocks and tickers
   const fetchStocksAndTickers = async () => {
     try {
@@ -31,6 +47,9 @@ function BetaCalculation({ onClose, onMenuChange }) {
       const data = await response.json();
       
       if (response.ok) {
+        // Store all data for filtering
+        setAllData(data);
+        
         // Extract unique market codes (HNX, HOSE, etc.)
         const uniqueMarketCodes = [...new Set(data.map(item => item.MarketCode))];
         setStocks(uniqueMarketCodes);
@@ -38,6 +57,7 @@ function BetaCalculation({ onClose, onMenuChange }) {
         // Extract unique ticker symbols (VLA, MCF, BXH, etc.)
         const uniqueTickers = [...new Set(data.map(item => item.Ticker))];
         setTickers(uniqueTickers);
+        setFilteredTickers(uniqueTickers); // Initialize filtered tickers with all tickers
       } else {
         setError('Không thể lấy dữ liệu cổ phiếu');
       }
@@ -292,7 +312,7 @@ function BetaCalculation({ onClose, onMenuChange }) {
                       className="ticker-select"
                     >
                       <option value="">-- Chọn ticker --</option>
-                      {tickers.map(ticker => (
+                      {filteredTickers.map(ticker => (
                         <option key={ticker} value={ticker}>{ticker}</option>
                       ))}
                     </select>
@@ -348,7 +368,7 @@ function BetaCalculation({ onClose, onMenuChange }) {
                           className="ticker-select"
                         >
                           <option value="">-- Chọn ticker --</option>
-                          {tickers.map(ticker => (
+                          {filteredTickers.map(ticker => (
                             <option key={ticker} value={ticker}>{ticker}</option>
                           ))}
                         </select>
