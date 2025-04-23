@@ -146,21 +146,6 @@ def import_market_index():
                     except (ValueError, TypeError):
                         # Nếu không thể chuyển đổi, giữ nguyên giá trị
                         pass
-            
-            # Chuyển đổi ngày từ chuỗi sang định dạng ngày nếu cần
-            if 'TradeDate' in record and isinstance(record['TradeDate'], str):
-                try:
-                    # Thử các định dạng ngày tháng phổ biến
-                    for date_format in ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%Y/%m/%d']:
-                        try:
-                            date_obj = datetime.strptime(record['TradeDate'], date_format)
-                            record['TradeDate'] = date_obj.strftime('%Y-%m-%d')
-                            break
-                        except ValueError:
-                            continue
-                except Exception:
-                    # Nếu không thể chuyển đổi, giữ nguyên giá trị
-                    pass
         
         # Lưu dữ liệu vào collection "market_index_data"
         current_app.db.market_index_data.insert_many(data)
