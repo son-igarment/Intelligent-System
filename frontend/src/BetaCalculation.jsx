@@ -95,13 +95,13 @@ function BetaCalculation({ onClose, onMenuChange }) {
         days_to_predict: parseInt(daysToPrediction)
       };
       
-      // Add either stock_code or ticker to the request
+      // Add market_code and ticker to the request separately
       if (selectedStock) {
         requestBody.market_code = selectedStock;
       }
       
       if (selectedTicker) {
-        requestBody.stock_code = selectedTicker;
+        requestBody.ticker = selectedTicker; // Use ticker instead of stock_code
       }
       
       const response = await fetch('http://localhost:5000/api/calculate-beta', {
@@ -168,15 +168,26 @@ function BetaCalculation({ onClose, onMenuChange }) {
       setLoading(true);
       setError('');
       
+      const requestBody = {
+        portfolio: portfolio,
+        days_to_predict: parseInt(daysToPrediction)
+      };
+      
+      // Add market_code and ticker if selected
+      if (selectedStock) {
+        requestBody.market_code = selectedStock;
+      }
+      
+      if (selectedTicker) {
+        requestBody.ticker = selectedTicker;
+      }
+      
       const response = await fetch('http://localhost:5000/api/calculate-portfolio-beta', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          portfolio: portfolio,
-          days_to_predict: parseInt(daysToPrediction)
-        })
+        body: JSON.stringify(requestBody)
       });
       
       const data = await response.json();
