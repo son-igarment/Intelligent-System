@@ -3,8 +3,24 @@ import numpy as np
 from datetime import datetime, timedelta
 
 def calculate_daily_returns(prices):
-    """Calculate daily returns from a series of prices"""
-    return (prices.astype(float) / prices.astype(float).shift(1) - 1).dropna()
+    """Calculate daily returns from a series of prices
+    
+    Handles weekend/non-trading days by calculating returns only between actual trading days.
+    This prevents NaN values that would occur when comparing with days having no trading data.
+    """
+    # Ensure prices are float type
+    prices = prices.astype(float)
+    
+    # Calculate returns only between actual trading days
+    # By using shift(1), we're comparing each day with the previous trading day
+    # regardless of calendar gaps between them
+    returns = (prices / prices.shift(1) - 1)
+    
+    # Handle potential NaN or infinite values
+    returns = returns.replace([np.inf, -np.inf], np.nan)
+    
+    # Drop NA values
+    return returns.dropna()
 
 def calculate_beta(stock_returns, market_returns):
     """
