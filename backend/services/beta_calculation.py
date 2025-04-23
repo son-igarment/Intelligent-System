@@ -65,26 +65,8 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
         if isinstance(date, str):
             date = datetime.strptime(date, '%Y-%m-%d').date()
     
-    # Check if stock_code contains both market code and ticker (format: "HNX:VLA")
-    if ':' in stock_code:
-        market_code, ticker = stock_code.split(':')
-        stock_df = stock_data[(stock_data['MarketCode'] == market_code) & 
-                             (stock_data['Ticker'] == ticker)].copy()
-    else:
-        # Check if the stock_code matches a MarketCode
-        market_matches = stock_data[stock_data['MarketCode'] == stock_code]
-        ticker_matches = stock_data[stock_data['Ticker'] == stock_code]
-        
-        if not market_matches.empty:
-            stock_df = market_matches.copy()
-        elif not ticker_matches.empty:
-            stock_df = ticker_matches.copy()
-        else:
-            # If no matches, assume it's a MarketCode
-            stock_df = stock_data[stock_data['MarketCode'] == stock_code].copy()
-    
     # If no data found for the stock code, return error
-    if stock_df.empty:
+    if stock_data.empty:
         return {
             'stock_code': stock_code,
             'date': date if isinstance(date, str) else date.strftime('%Y-%m-%d'),
@@ -93,7 +75,7 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
         }
     
     # Ensure data is sorted by date
-    stock_df = stock_df.sort_values('TradeDate')
+    stock_df = stock_data.sort_values('TradeDate')
     market_data = market_data.sort_values('TradeDate')
     
     # Calculate daily returns
@@ -107,10 +89,11 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
     #     days_window = 30  # Use 30 days of data
     # else:  # For long-term predictions (> 5 days)
     #     days_window = 60  # Use 60 days of data
+    days_window = 365
     
     # Get data for the specified window from the given date
     end_date = date
-    start_date = (datetime.strptime(end_date, '%Y-%m-%d') - timedelta(days=365)).strftime('%Y-%m-%d')
+    start_date = (datetime.strptime(end_date, '%Y-%m-%d') - timedelta(days=days_window)).strftime('%Y-%m-%d')
     
     stock_period = stock_df[(stock_df['TradeDate'] >= start_date) & (stock_df['TradeDate'] <= end_date)]
     market_period = market_data[(market_data['TradeDate'] >= start_date) & (market_data['TradeDate'] <= end_date)]

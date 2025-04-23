@@ -315,7 +315,10 @@ def calculate_beta():
         days_to_predict = request_data.get('days_to_predict', 5)  # Default to 5 days
         
         # Retrieve stock data from MongoDB
-        stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code}, {'_id': 0}))
+        if market_code:
+            stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code}, {'_id': 0}))
+        else:
+            stock_data = list(current_app.db.stock_data.find({}, {'_id': 0}))
         if not stock_data:
             return jsonify({"error": "No stock data available"}), 404
         
@@ -330,25 +333,30 @@ def calculate_beta():
             stock_df = filtered_stock_df
         
         # Get market index data from market_index_data collection
-        mc = "HSX" if market_code == "HOSE" else market_code
-        market_data = list(current_app.db.market_index_data.find({'MarketCode': mc}, {'_id': 0}))
-        
+        if market_code:
+            mc = "HSX" if market_code == "HOSE" else market_code
+            market_data = list(current_app.db.market_index_data.find({'MarketCode': mc}, {'_id': 0}))
+        else:
+            market_data = list(current_app.db.market_index_data.find({}, {'_id': 0}))
+
+        # Normalize index codes - handle different naming conventions
+        # Map HSX or HOSE to VNIndex, HNX to HNXIndex
+        code_mapping = {
+            'HSX': 'VNINDEX',
+            'HOSE': 'VNINDEX',
+            'HNX': 'HNXIndex',
+            'UPCOM': 'UpcomIndex',
+            'Upcom': 'UpcomIndex',
+        }
         if market_data:
             # Convert to DataFrame
             market_df = pd.DataFrame(market_data)
-            
-            # Normalize index codes - handle different naming conventions
-            # Map HSX or HOSE to VNIndex, HNX to HNXIndex
-            code_mapping = {
-                'HSX': 'VNINDEX',
-                'HOSE': 'VNINDEX',
-                'HNX': 'HNXIndex'
-            }
 
-            filtered_market_df = market_df[market_df['IndexCode'] == code_mapping[market_code]]
-            if filtered_market_df.empty:
-                return jsonify({"error": f"No data found for IndexCode={code_mapping[market_code]}"}), 404
-            market_df = filtered_market_df
+            if market_code:
+                filtered_market_df = market_df[market_df['IndexCode'] == code_mapping[market_code]]
+                if filtered_market_df.empty:
+                    return jsonify({"error": f"No data found for IndexCode={code_mapping[market_code]}"}), 404
+                market_df = filtered_market_df
             
             if 'IndexCode' in market_df.columns:
                 market_df['IndexCode'] = market_df['IndexCode'].apply(
@@ -383,13 +391,9 @@ def calculate_beta():
         calculate_for = None
         if ticker and market_code:
             calculate_for = f"{market_code}:{ticker}"
-        elif ticker:
-            calculate_for = ticker
-        elif market_code:
-            calculate_for = market_code
         
         # Calculate beta
-        if calculate_for:
+        if ticker and market_code:
             # Calculate beta for a specific stock with days_to_predict parameter
             result = get_beta_for_stock(stock_df, market_df, calculate_for, date, days_to_predict)
             
@@ -421,12 +425,15 @@ def calculate_beta():
                     market = row['MarketCode']
                     tick = row['Ticker']
                     code_name = f"{market}:{tick}"
-                    
+
                     # Filter stock data for this specific combination
                     specific_df = stock_df[(stock_df['MarketCode'] == market) & (stock_df['Ticker'] == tick)]
+                    mc = "HSX" if market == "HOSE" else market
+                    mc = "Upcom" if market == "UPCOM" else market
+                    specific_market_df = market_df[(stock_df['MarketCode'] == mc) & (market_df['IndexCode'] == code_mapping[market])]
                     
                     if not specific_df.empty:
-                        beta_result = get_beta_for_stock(specific_df, market_df, code_name, date, days_to_predict)
+                        beta_result = get_beta_for_stock(specific_df, specific_market_df, code_name, date, days_to_predict)
                         beta_result['market_code'] = market
                         beta_result['ticker'] = tick
                         results.append(beta_result)
