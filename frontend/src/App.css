@@ -1693,13 +1693,25 @@ body {
   gap: 10px;
 }
 
-.stock-select {
+.stock-select, .ticker-select {
   padding: 8px 12px;
   border-radius: 4px;
   border: 1px solid #555;
   background-color: #2a2a2a;
   color: #fff;
   min-width: 200px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 16px;
+  padding-right: 30px;
+}
+
+.ticker-select {
+  margin-left: 10px;
 }
 
 .calculate-btn, 

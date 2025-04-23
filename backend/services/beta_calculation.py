@@ -33,7 +33,7 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
     Parameters:
     stock_data (DataFrame): Stock price data with columns for Date, Code, Price
     market_data (DataFrame): Market index data with Date and Index value
-    stock_code (str): The stock code to calculate Beta for
+    stock_code (str): The stock code to calculate Beta for (can be MarketCode, Ticker, or combined)
     date (str, optional): Date in format 'YYYY-MM-DD', defaults to latest
     days_to_predict (int, optional): Number of days to predict ahead, affects Beta calculation window
     
@@ -54,8 +54,32 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
         if isinstance(date, str):
             date = datetime.strptime(date, '%Y-%m-%d').date()
     
-    # Filter data for the specific stock
-    stock_df = stock_data[stock_data['MarketCode'] == stock_code].copy()
+    # Check if stock_code contains both market code and ticker (format: "HNX:VLA")
+    if ':' in stock_code:
+        market_code, ticker = stock_code.split(':')
+        stock_df = stock_data[(stock_data['MarketCode'] == market_code) & 
+                             (stock_data['Ticker'] == ticker)].copy()
+    else:
+        # Check if the stock_code matches a MarketCode
+        market_matches = stock_data[stock_data['MarketCode'] == stock_code]
+        ticker_matches = stock_data[stock_data['Ticker'] == stock_code]
+        
+        if not market_matches.empty:
+            stock_df = market_matches.copy()
+        elif not ticker_matches.empty:
+            stock_df = ticker_matches.copy()
+        else:
+            # If no matches, assume it's a MarketCode
+            stock_df = stock_data[stock_data['MarketCode'] == stock_code].copy()
+    
+    # If no data found for the stock code, return error
+    if stock_df.empty:
+        return {
+            'stock_code': stock_code,
+            'date': date if isinstance(date, str) else date.strftime('%Y-%m-%d'),
+            'beta': None,
+            'error': f'No data found for stock code: {stock_code}'
+        }
     
     # Ensure data is sorted by date
     stock_df = stock_df.sort_values('TradeDate')
@@ -188,14 +212,31 @@ def calculate_all_stock_betas(stock_data, market_data, date=None):
     if date is None:
         date = stock_data['TradeDate'].max()
     
-    # Get unique stock codes
-    stock_codes = stock_data['MarketCode'].unique()
-    
-    # Calculate beta for each stock
-    results = []
-    for code in stock_codes:
-        beta_result = get_beta_for_stock(stock_data, market_data, code, date)
-        results.append(beta_result)
+    # Check if we have both MarketCode and Ticker columns
+    if 'MarketCode' in stock_data.columns and 'Ticker' in stock_data.columns:
+        # Get unique combinations of MarketCode and Ticker
+        combined_df = stock_data[['MarketCode', 'Ticker']].drop_duplicates()
+        
+        # Calculate beta for each unique combination
+        results = []
+        for _, row in combined_df.iterrows():
+            market_code = row['MarketCode']
+            ticker = row['Ticker']
+            combined_code = f"{market_code}:{ticker}"
+            
+            beta_result = get_beta_for_stock(stock_data, market_data, combined_code, date)
+            beta_result['market_code'] = market_code
+            beta_result['ticker'] = ticker
+            results.append(beta_result)
+    else:
+        # Fallback to just using MarketCode
+        stock_codes = stock_data['MarketCode'].unique()
+        
+        # Calculate beta for each stock
+        results = []
+        for code in stock_codes:
+            beta_result = get_beta_for_stock(stock_data, market_data, code, date)
+            results.append(beta_result)
     
     return pd.DataFrame(results)
 
@@ -207,6 +248,7 @@ def get_beta_portfolio(stock_data, market_data, portfolio, date=None, days_to_pr
     stock_data (DataFrame): Stock price data
     market_data (DataFrame): Market index data
     portfolio (dict): Dictionary with stock codes as keys and weights as values
+                     (stock codes can be MarketCode, Ticker, or "MarketCode:Ticker")
     date (str, optional): Date to calculate Beta for, defaults to latest
     days_to_predict (int, optional): Number of days to predict ahead, affects Beta calculation window
     
@@ -222,8 +264,19 @@ def get_beta_portfolio(stock_data, market_data, portfolio, date=None, days_to_pr
         if beta_result['beta'] is not None:
             betas.append(beta_result['beta'])
             weights.append(weight)
+            
+            # Extract market_code and ticker if it's a combined code
+            market_code = None
+            ticker = None
+            if ':' in stock_code:
+                parts = stock_code.split(':')
+                if len(parts) == 2:
+                    market_code, ticker = parts
+            
             component_betas.append({
                 'stock_code': stock_code,
+                'market_code': market_code,
+                'ticker': ticker,
                 'weight': weight,
                 'beta': beta_result['beta'],
                 'weighted_beta': beta_result['beta'] * weight

@@ -4,8 +4,10 @@ import './App.css';
 function BetaCalculation({ onClose, onMenuChange }) {
   const currentDate = "2025-03-28";
   const [stocks, setStocks] = useState([]);
+  const [tickers, setTickers] = useState([]);
   const [betaResults, setBetaResults] = useState([]);
   const [selectedStock, setSelectedStock] = useState('');
+  const [selectedTicker, setSelectedTicker] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [calculationDate, setCalculationDate] = useState('');
@@ -14,13 +16,13 @@ function BetaCalculation({ onClose, onMenuChange }) {
   const [portfolioBeta, setPortfolioBeta] = useState(null);
   const [daysToPrediction, setDaysToPrediction] = useState(5);
 
-  // Fetch stocks on component load
+  // Fetch stocks and tickers on component load
   useEffect(() => {
-    fetchStocks();
+    fetchStocksAndTickers();
   }, []);
 
-  // Fetch available stocks
-  const fetchStocks = async () => {
+  // Fetch available stocks and tickers
+  const fetchStocksAndTickers = async () => {
     try {
       setLoading(true);
       setError('');
@@ -29,9 +31,13 @@ function BetaCalculation({ onClose, onMenuChange }) {
       const data = await response.json();
       
       if (response.ok) {
-        // Extract unique stock codes
-        const uniqueStocks = [...new Set(data.map(item => item.MarketCode))];
-        setStocks(uniqueStocks);
+        // Extract unique market codes (HNX, HOSE, etc.)
+        const uniqueMarketCodes = [...new Set(data.map(item => item.MarketCode))];
+        setStocks(uniqueMarketCodes);
+        
+        // Extract unique ticker symbols (VLA, MCF, BXH, etc.)
+        const uniqueTickers = [...new Set(data.map(item => item.Ticker))];
+        setTickers(uniqueTickers);
       } else {
         setError('Không thể lấy dữ liệu cổ phiếu');
       }
@@ -74,10 +80,10 @@ function BetaCalculation({ onClose, onMenuChange }) {
     }
   };
 
-  // Calculate Beta for a specific stock
+  // Calculate Beta for a specific stock or ticker
   const calculateStockBeta = async () => {
-    if (!selectedStock) {
-      setError('Vui lòng chọn mã chứng khoán');
+    if (!selectedStock && !selectedTicker) {
+      setError('Vui lòng chọn mã chứng khoán hoặc ticker');
       return;
     }
     
@@ -85,15 +91,25 @@ function BetaCalculation({ onClose, onMenuChange }) {
       setLoading(true);
       setError('');
       
+      const requestBody = {
+        days_to_predict: parseInt(daysToPrediction)
+      };
+      
+      // Add either stock_code or ticker to the request
+      if (selectedStock) {
+        requestBody.market_code = selectedStock;
+      }
+      
+      if (selectedTicker) {
+        requestBody.stock_code = selectedTicker;
+      }
+      
       const response = await fetch('http://localhost:5000/api/calculate-beta', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          stock_code: selectedStock,
-          days_to_predict: parseInt(daysToPrediction)
-        })
+        body: JSON.stringify(requestBody)
       });
       
       const data = await response.json();
@@ -253,16 +269,27 @@ function BetaCalculation({ onClose, onMenuChange }) {
                       onChange={(e) => setSelectedStock(e.target.value)}
                       className="stock-select"
                     >
-                      <option value="">-- Chọn mã chứng khoán --</option>
+                      <option value="">-- Chọn market code --</option>
                       {stocks.map(stock => (
                         <option key={stock} value={stock}>{stock}</option>
+                      ))}
+                    </select>
+                    
+                    <select 
+                      value={selectedTicker} 
+                      onChange={(e) => setSelectedTicker(e.target.value)}
+                      className="ticker-select"
+                    >
+                      <option value="">-- Chọn ticker --</option>
+                      {tickers.map(ticker => (
+                        <option key={ticker} value={ticker}>{ticker}</option>
                       ))}
                     </select>
                     
                     <button 
                       className="calculate-btn" 
                       onClick={calculateStockBeta}
-                      disabled={loading || !selectedStock}
+                      disabled={loading || (!selectedStock && !selectedTicker)}
                     >
                       Tính Beta cho mã đã chọn
                     </button>
@@ -298,15 +325,26 @@ function BetaCalculation({ onClose, onMenuChange }) {
                           onChange={(e) => setSelectedStock(e.target.value)}
                           className="stock-select"
                         >
-                          <option value="">-- Chọn mã để thêm vào danh mục --</option>
+                          <option value="">-- Chọn market code --</option>
                           {stocks.map(stock => (
                             <option key={stock} value={stock}>{stock}</option>
                           ))}
                         </select>
                         
+                        <select 
+                          value={selectedTicker} 
+                          onChange={(e) => setSelectedTicker(e.target.value)}
+                          className="ticker-select"
+                        >
+                          <option value="">-- Chọn ticker --</option>
+                          {tickers.map(ticker => (
+                            <option key={ticker} value={ticker}>{ticker}</option>
+                          ))}
+                        </select>
+                        
                         <button 
-                          onClick={() => selectedStock && addToPortfolio(selectedStock)}
-                          disabled={!selectedStock}
+                          onClick={() => selectedTicker && addToPortfolio(selectedTicker)}
+                          disabled={!selectedTicker}
                           className="add-btn"
                         >
                           Thêm vào danh mục

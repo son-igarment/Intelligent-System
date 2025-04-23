@@ -280,7 +280,9 @@ def calculate_beta():
         # Get parameters from the request
         request_data = request.json or {}
         date = request_data.get('date')  # Optional date parameter
-        stock_code = request_data.get('stock_code')  # Optional specific stock
+        market_code = request_data.get('market_code')  # Market code (HNX, HOSE)
+        ticker = request_data.get('ticker')  # Stock ticker (VLA, MCF, etc.)
+        stock_code = request_data.get('stock_code')  # For backward compatibility
         days_to_predict = request_data.get('days_to_predict', 5)  # Default to 5 days
         
         # Retrieve stock data from MongoDB
@@ -290,6 +292,23 @@ def calculate_beta():
         
         # Convert to DataFrame
         stock_df = pd.DataFrame(stock_data)
+        
+        # Filter stock data based on both MarketCode and Ticker if provided
+        if market_code and ticker:
+            filtered_stock_df = stock_df[(stock_df['MarketCode'] == market_code) & (stock_df['Ticker'] == ticker)]
+            if filtered_stock_df.empty:
+                return jsonify({"error": f"No data found for MarketCode={market_code}, Ticker={ticker}"}), 404
+            stock_df = filtered_stock_df
+        elif market_code:
+            filtered_stock_df = stock_df[stock_df['MarketCode'] == market_code]
+            if filtered_stock_df.empty:
+                return jsonify({"error": f"No data found for MarketCode={market_code}"}), 404
+            stock_df = filtered_stock_df
+        elif ticker:
+            filtered_stock_df = stock_df[stock_df['Ticker'] == ticker]
+            if filtered_stock_df.empty:
+                return jsonify({"error": f"No data found for Ticker={ticker}"}), 404
+            stock_df = filtered_stock_df
         
         # Get market index data from market_index_data collection
         market_data = list(current_app.db.market_index_data.find({}, {'_id': 0}))
@@ -335,15 +354,28 @@ def calculate_beta():
             if market_df.empty:
                 return jsonify({"error": "No market index data available. Please import VNIndex data first."}), 404
         
-        # Calculate beta
+        # Determine what we're calculating beta for
+        calculate_for = None
         if stock_code:
+            calculate_for = stock_code
+        elif ticker and market_code:
+            calculate_for = f"{market_code}:{ticker}"
+        elif ticker:
+            calculate_for = ticker
+        elif market_code:
+            calculate_for = market_code
+        
+        # Calculate beta
+        if calculate_for:
             # Calculate beta for a specific stock with days_to_predict parameter
-            result = get_beta_for_stock(stock_df, market_df, stock_code, date, days_to_predict)
+            result = get_beta_for_stock(stock_df, market_df, calculate_for, date, days_to_predict)
             
             # Store the result in MongoDB
             if result['beta'] is not None:
                 beta_record = {
                     'stock_code': result['stock_code'],
+                    'market_code': market_code,
+                    'ticker': ticker,
                     'date': result['date'],
                     'beta': result['beta'],
                     'calculation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -357,9 +389,29 @@ def calculate_beta():
         else:
             # Calculate beta for all stocks with days_to_predict parameter
             results = []
-            for code in stock_df['MarketCode'].unique():
-                beta_result = get_beta_for_stock(stock_df, market_df, code, date, days_to_predict)
-                results.append(beta_result)
+            
+            # If we're calculating for all, we should consider unique combinations of MarketCode and Ticker
+            if 'MarketCode' in stock_df.columns and 'Ticker' in stock_df.columns:
+                # Get unique combinations of MarketCode and Ticker
+                combined_codes = stock_df.groupby(['MarketCode', 'Ticker']).size().reset_index()
+                for _, row in combined_codes.iterrows():
+                    market = row['MarketCode']
+                    tick = row['Ticker']
+                    code_name = f"{market}:{tick}"
+                    
+                    # Filter stock data for this specific combination
+                    specific_df = stock_df[(stock_df['MarketCode'] == market) & (stock_df['Ticker'] == tick)]
+                    
+                    if not specific_df.empty:
+                        beta_result = get_beta_for_stock(specific_df, market_df, code_name, date, days_to_predict)
+                        beta_result['market_code'] = market
+                        beta_result['ticker'] = tick
+                        results.append(beta_result)
+            else:
+                # Fallback to old method if columns are not available
+                for code in stock_df['MarketCode'].unique():
+                    beta_result = get_beta_for_stock(stock_df, market_df, code, date, days_to_predict)
+                    results.append(beta_result)
             
             results_df = pd.DataFrame(results)
             
@@ -370,6 +422,8 @@ def calculate_beta():
                 if row['beta'] is not None:
                     beta_record = {
                         'stock_code': row['stock_code'],
+                        'market_code': row.get('market_code'),
+                        'ticker': row.get('ticker'),
                         'date': row['date'],
                         'beta': float(row['beta']),
                         'calculation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -401,6 +455,8 @@ def calculate_portfolio_beta():
         request_data = request.json or {}
         portfolio = request_data.get('portfolio', {})  # Dict of stock_code: weight
         date = request_data.get('date')  # Optional date parameter
+        market_code = request_data.get('market_code')  # Optional market code parameter
+        ticker = request_data.get('ticker')  # Optional ticker parameter
         days_to_predict = request_data.get('days_to_predict', 5)  # Default to 5 days
         
         if not portfolio:
@@ -413,6 +469,20 @@ def calculate_portfolio_beta():
         
         # Convert to DataFrame
         stock_df = pd.DataFrame(stock_data)
+        
+        # Filter stock data if market_code and/or ticker provided
+        if market_code and ticker:
+            filtered_stock_df = stock_df[(stock_df['MarketCode'] == market_code) & (stock_df['Ticker'] == ticker)]
+            if not filtered_stock_df.empty:
+                stock_df = filtered_stock_df
+        elif market_code:
+            filtered_stock_df = stock_df[stock_df['MarketCode'] == market_code]
+            if not filtered_stock_df.empty:
+                stock_df = filtered_stock_df
+        elif ticker:
+            filtered_stock_df = stock_df[stock_df['Ticker'] == ticker]
+            if not filtered_stock_df.empty:
+                stock_df = filtered_stock_df
         
         # Get market index data from market_index_data collection
         market_data = list(current_app.db.market_index_data.find({}, {'_id': 0}))
@@ -458,6 +528,17 @@ def calculate_portfolio_beta():
             if market_df.empty:
                 return jsonify({"error": "No market index data available. Please import VNIndex data first."}), 404
         
+        # If market_code and ticker are provided, update portfolio keys to use combined format
+        if market_code and ticker and len(portfolio) > 0:
+            updated_portfolio = {}
+            for code, weight in portfolio.items():
+                # If the code doesn't already have market_code included, add it
+                if ':' not in code:
+                    updated_portfolio[f"{market_code}:{code}"] = weight
+                else:
+                    updated_portfolio[code] = weight
+            portfolio = updated_portfolio
+        
         # Calculate portfolio beta with days_to_predict parameter
         result = get_beta_portfolio(stock_df, market_df, portfolio, date, days_to_predict)
         
@@ -467,6 +548,8 @@ def calculate_portfolio_beta():
                 'portfolio': portfolio,
                 'date': result['date'],
                 'portfolio_beta': result['portfolio_beta'],
+                'market_code': market_code,
+                'ticker': ticker,
                 'calculation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'interpretation': result['interpretation'],
                 'prediction_horizon': days_to_predict
