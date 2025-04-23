@@ -96,6 +96,21 @@ def import_data():
         # Thêm import_id vào mỗi record
         for record in data:
             record['import_id'] = import_id_str
+
+            # Chuyển đổi ngày từ chuỗi sang định dạng ngày nếu cần
+            if 'TradeDate' in record and isinstance(record['TradeDate'], str):
+                try:
+                    # Thử các định dạng ngày tháng phổ biến
+                    for date_format in ['%Y-%m-%d', '%Y/%m/%d', '%m/%d/%Y', '%d/%m/%Y']:
+                        try:
+                            date_obj = datetime.strptime(record['TradeDate'], date_format)
+                            record['TradeDate'] = date_obj.strftime('%Y-%m-%d')
+                            break
+                        except ValueError:
+                            continue
+                except Exception:
+                    # Nếu không thể chuyển đổi, giữ nguyên giá trị
+                    pass
         
         # Lưu dữ liệu vào collection "stock_data"
         current_app.db.stock_data.insert_many(data)
@@ -146,6 +161,21 @@ def import_market_index():
                     except (ValueError, TypeError):
                         # Nếu không thể chuyển đổi, giữ nguyên giá trị
                         pass
+
+            # Chuyển đổi ngày từ chuỗi sang định dạng ngày nếu cần
+            if 'TradeDate' in record and isinstance(record['TradeDate'], str):
+                try:
+                    # Thử các định dạng ngày tháng phổ biến
+                    for date_format in ['%Y-%m-%d', '%Y/%m/%d', '%m/%d/%Y', '%d/%m/%Y']:
+                        try:
+                            date_obj = datetime.strptime(record['TradeDate'], date_format)
+                            record['TradeDate'] = date_obj.strftime('%Y-%m-%d')
+                            break
+                        except ValueError:
+                            continue
+                except Exception:
+                    # Nếu không thể chuyển đổi, giữ nguyên giá trị
+                    pass
         
         # Lưu dữ liệu vào collection "market_index_data"
         current_app.db.market_index_data.insert_many(data)
@@ -212,8 +242,8 @@ def get_all_stock_data():
     
     try:
         # Có thể thêm giới hạn và phân trang nếu dữ liệu lớn
-        limit = int(request.args.get('limit', 100))
-        data = list(current_app.db.stock_data.find({}, {'_id': 0}).limit(limit))
+        # limit = int(request.args.get('limit', 100))
+        data = list(current_app.db.stock_data.find({}, {'_id': 0}))
         
         return jsonify(data)
     except Exception as e:
@@ -282,11 +312,10 @@ def calculate_beta():
         date = request_data.get('date')  # Optional date parameter
         market_code = request_data.get('market_code')  # Market code (HNX, HOSE)
         ticker = request_data.get('ticker')  # Stock ticker (VLA, MCF, etc.)
-        stock_code = request_data.get('stock_code')  # For backward compatibility
         days_to_predict = request_data.get('days_to_predict', 5)  # Default to 5 days
         
         # Retrieve stock data from MongoDB
-        stock_data = list(current_app.db.stock_data.find({}, {'_id': 0}))
+        stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code}, {'_id': 0}))
         if not stock_data:
             return jsonify({"error": "No stock data available"}), 404
         
@@ -294,24 +323,15 @@ def calculate_beta():
         stock_df = pd.DataFrame(stock_data)
         
         # Filter stock data based on both MarketCode and Ticker if provided
-        if market_code and ticker:
-            filtered_stock_df = stock_df[(stock_df['MarketCode'] == market_code) & (stock_df['Ticker'] == ticker)]
-            if filtered_stock_df.empty:
-                return jsonify({"error": f"No data found for MarketCode={market_code}, Ticker={ticker}"}), 404
-            stock_df = filtered_stock_df
-        elif market_code:
-            filtered_stock_df = stock_df[stock_df['MarketCode'] == market_code]
-            if filtered_stock_df.empty:
-                return jsonify({"error": f"No data found for MarketCode={market_code}"}), 404
-            stock_df = filtered_stock_df
-        elif ticker:
+        if ticker:
             filtered_stock_df = stock_df[stock_df['Ticker'] == ticker]
             if filtered_stock_df.empty:
                 return jsonify({"error": f"No data found for Ticker={ticker}"}), 404
             stock_df = filtered_stock_df
         
         # Get market index data from market_index_data collection
-        market_data = list(current_app.db.market_index_data.find({}, {'_id': 0}))
+        mc = "HSX" if market_code == "HOSE" else market_code
+        market_data = list(current_app.db.market_index_data.find({'MarketCode': mc}, {'_id': 0}))
         
         if market_data:
             # Convert to DataFrame
@@ -320,10 +340,15 @@ def calculate_beta():
             # Normalize index codes - handle different naming conventions
             # Map HSX or HOSE to VNIndex, HNX to HNXIndex
             code_mapping = {
-                'HSX': 'VNIndex',
-                'HOSE': 'VNIndex',
+                'HSX': 'VNINDEX',
+                'HOSE': 'VNINDEX',
                 'HNX': 'HNXIndex'
             }
+
+            filtered_market_df = market_df[market_df['IndexCode'] == code_mapping[market_code]]
+            if filtered_market_df.empty:
+                return jsonify({"error": f"No data found for IndexCode={code_mapping[market_code]}"}), 404
+            market_df = filtered_market_df
             
             if 'IndexCode' in market_df.columns:
                 market_df['IndexCode'] = market_df['IndexCode'].apply(
@@ -356,9 +381,7 @@ def calculate_beta():
         
         # Determine what we're calculating beta for
         calculate_for = None
-        if stock_code:
-            calculate_for = stock_code
-        elif ticker and market_code:
+        if ticker and market_code:
             calculate_for = f"{market_code}:{ticker}"
         elif ticker:
             calculate_for = ticker

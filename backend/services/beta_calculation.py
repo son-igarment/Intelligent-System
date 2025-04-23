@@ -17,7 +17,7 @@ def calculate_daily_returns(prices):
     returns = (prices / prices.shift(1) - 1)
     
     # Handle potential NaN or infinite values
-    returns = returns.replace([np.inf, -np.inf], np.nan)
+    returns = returns.replace(np.nan, 0)
     
     # Drop NA values
     return returns.dropna()
@@ -58,7 +58,7 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
     """
     if date is None:
         # Use the latest date in the dataset
-        date = max(stock_data['TradeDate'].values, key=lambda d: datetime.strptime(d, '%m/%d/%Y'))
+        date = max(stock_data['TradeDate'].values, key=lambda d: datetime.strptime(d, '%Y-%m-%d'))
 
     else:
         # Convert string date to datetime if needed
@@ -101,16 +101,16 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
     market_data['Returns'] = calculate_daily_returns(market_data['CurrentIndex'])
     
     # Adjust calculation window based on prediction horizon
-    if days_to_predict <= 2:  # For short-term predictions (1-2 days)
-        days_window = 15  # Use 15 days of data
-    elif days_to_predict <= 5:  # For medium-term predictions (3-5 days)
-        days_window = 30  # Use 30 days of data
-    else:  # For long-term predictions (> 5 days)
-        days_window = 60  # Use 60 days of data
+    # if days_to_predict <= 2:  # For short-term predictions (1-2 days)
+    #     days_window = 15  # Use 15 days of data
+    # elif days_to_predict <= 5:  # For medium-term predictions (3-5 days)
+    #     days_window = 30  # Use 30 days of data
+    # else:  # For long-term predictions (> 5 days)
+    #     days_window = 60  # Use 60 days of data
     
     # Get data for the specified window from the given date
     end_date = date
-    start_date = (datetime.strptime(end_date, '%m/%d/%Y') - timedelta(days=days_window)).strftime('%m/%d/%Y')
+    start_date = (datetime.strptime(end_date, '%Y-%m-%d') - timedelta(days=365)).strftime('%Y-%m-%d')
     
     stock_period = stock_df[(stock_df['TradeDate'] >= start_date) & (stock_df['TradeDate'] <= end_date)]
     market_period = market_data[(market_data['TradeDate'] >= start_date) & (market_data['TradeDate'] <= end_date)]
