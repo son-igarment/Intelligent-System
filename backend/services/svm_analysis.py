@@ -20,8 +20,14 @@ def prepare_features(stock_data, beta_values, days_to_predict=5):
     # Create a copy of the data
     df = stock_data.copy()
     
-    # Convert date strings to datetime
-    df['TradeDate'] = pd.to_datetime(df['TradeDate'])
+    # Convert date strings to datetime - flexibly handle different formats
+    try:
+        df['TradeDate'] = pd.to_datetime(df['TradeDate'], errors='coerce')
+    except:
+        print("Warning: Some dates could not be converted to datetime format")
+    
+    # Drop rows with invalid dates
+    df = df.dropna(subset=['TradeDate'])
     
     # Sort by date
     df = df.sort_values(['MarketCode', 'TradeDate'])
