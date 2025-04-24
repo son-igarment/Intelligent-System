@@ -5,17 +5,16 @@ function AssetReport({ onClose, onMenuChange }) {
   const currentDate = "2025-03-28";
   
   const [assetData, setAssetData] = useState([]);
-  const [allAssetData, setAllAssetData] = useState([]); // To keep original data
   const [marketCodes, setMarketCodes] = useState([]);
   const [selectedMarketCode, setSelectedMarketCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchAssetData();
+    fetchMarketCodes();
   }, []);
 
-  const fetchAssetData = async () => {
+  const fetchMarketCodes = async () => {
     try {
       setLoading(true);
       setError('');
@@ -24,14 +23,11 @@ function AssetReport({ onClose, onMenuChange }) {
       const data = await response.json();
       
       if (response.ok) {
-        setAllAssetData(data);
-        setAssetData(data);
-        
         // Extract unique market codes
         const uniqueMarketCodes = [...new Set(data.map(item => item.MarketCode))];
         setMarketCodes(uniqueMarketCodes);
       } else {
-        setError('Failed to fetch asset data: ' + (data.error || 'Unknown error'));
+        setError('Failed to fetch market codes: ' + (data.error || 'Unknown error'));
       }
     } catch (err) {
       setError('Error: ' + err.message);
@@ -39,20 +35,28 @@ function AssetReport({ onClose, onMenuChange }) {
       setLoading(false);
     }
   };
-  
+
   const filterByMarketCode = () => {
     if (!selectedMarketCode) {
-      // If no market code is selected, show all data
-      setAssetData(allAssetData);
+      // If no market code is selected, clear data
+      setAssetData([]);
       return;
     }
     
     // Filter the data by selected market code
-    const filteredData = allAssetData.filter(item => 
-      item.MarketCode === selectedMarketCode
-    );
-    
-    setAssetData(filteredData);
+    fetch('http://localhost:5000/api/stock-data-with-beta')
+      .then(response => response.json())
+      .then(data => {
+        if (data) {
+          const filteredData = data.filter(item => 
+            item.MarketCode === selectedMarketCode
+          );
+          setAssetData(filteredData);
+        }
+      })
+      .catch(err => {
+        setError('Error filtering data: ' + err.message);
+      });
   };
 
   return (
@@ -95,7 +99,7 @@ function AssetReport({ onClose, onMenuChange }) {
         <div className="dashboard-main">
           <div className="report-container">
             <div className="report-header">
-              <h2 className="report-title">Daily Net Value Asset Report</h2>
+              <h2 className="report-title">Daily Net Value Asset</h2>
               
               <div className="report-dates">
                 <div>Report date: <strong>{currentDate}</strong>.</div>
@@ -109,7 +113,7 @@ function AssetReport({ onClose, onMenuChange }) {
                   onChange={(e) => setSelectedMarketCode(e.target.value)}
                   className="market-code-select"
                 >
-                  <option value="">-- All Market Codes --</option>
+                  <option value="">-- Select Market Code --</option>
                   {marketCodes.map((code, index) => (
                     <option key={index} value={code}>{code}</option>
                   ))}
@@ -117,48 +121,55 @@ function AssetReport({ onClose, onMenuChange }) {
                 <button 
                   onClick={filterByMarketCode}
                   className="filter-btn"
+                  disabled={!selectedMarketCode}
                 >
-                  Filter
+                  Load Data
                 </button>
               </div>
             </div>
             
-            {loading && <div className="loading-indicator">Loading asset data...</div>}
+            {loading && <div className="loading-indicator">Loading data...</div>}
             {error && <div className="error-message">{error}</div>}
             
             <div className="stock-table-container">
-              <table className="stock-table">
-                <thead>
-                  <tr>
-                    <th>Market Code</th>
-                    <th>Ticker</th>
-                    <th>Close Price</th>
-                    <th>Total Volume</th>
-                    <th>Open Price</th>
-                    <th>Current Price</th>
-                    <th>Profit / Loss</th>
-                    <th>Profit / Loss (%)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {assetData.map((asset, index) => (
-                    <tr key={index}>
-                      <td>{asset.MarketCode}</td>
-                      <td>{asset.Ticker}</td>
-                      <td>{asset.ClosePrice.toFixed(2)}</td>
-                      <td>{asset.TotalVolume.toFixed(0)}</td>
-                      <td>{asset.OpenPrice.toFixed(2)}</td>
-                      <td>{asset.CurrentPrice.toFixed(2)}</td>
-                      <td className={asset.ProfitLoss >= 0 ? 'profit' : 'loss'}>
-                        {asset.ProfitLoss.toFixed(2)}
-                      </td>
-                      <td className={asset.ProfitLossPercent >= 0 ? 'profit' : 'loss'}>
-                        {asset.ProfitLossPercent.toFixed(2)}%
-                      </td>
+              {assetData.length > 0 ? (
+                <table className="stock-table">
+                  <thead>
+                    <tr>
+                      <th>Market Code</th>
+                      <th>Ticker</th>
+                      <th>Close Price</th>
+                      <th>Total Volume</th>
+                      <th>Open Price</th>
+                      <th>Current Price</th>
+                      <th>Profit / Loss</th>
+                      <th>Profit / Loss (%)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {assetData.map((asset, index) => (
+                      <tr key={index}>
+                        <td>{asset.MarketCode}</td>
+                        <td>{asset.Ticker}</td>
+                        <td>{asset.ClosePrice.toFixed(2)}</td>
+                        <td>{asset.TotalVolume.toFixed(0)}</td>
+                        <td>{asset.OpenPrice.toFixed(2)}</td>
+                        <td>{asset.CurrentPrice.toFixed(2)}</td>
+                        <td className={asset.ProfitLoss >= 0 ? 'profit' : 'loss'}>
+                          {asset.ProfitLoss.toFixed(2)}
+                        </td>
+                        <td className={asset.ProfitLossPercent >= 0 ? 'profit' : 'loss'}>
+                          {asset.ProfitLossPercent.toFixed(2)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="no-data-message">
+                  {!selectedMarketCode ? "Please select a market code to load data" : "No data available for the selected market code"}
+                </div>
+              )}
             </div>
           </div>
         </div>

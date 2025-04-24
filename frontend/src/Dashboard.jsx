@@ -11,7 +11,6 @@ function Dashboard({ onClose }) {
   const currentDate = "2025-03-28";
   
   const [stockData, setStockData] = useState([]);
-  const [allStockData, setAllStockData] = useState([]); // To keep original data
   const [marketCodes, setMarketCodes] = useState([]);
   const [selectedMarketCode, setSelectedMarketCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,10 +19,10 @@ function Dashboard({ onClose }) {
   const [activeMenu, setActiveMenu] = useState('dashboard');
 
   useEffect(() => {
-    fetchStockData();
+    fetchMarketCodes();
   }, []);
 
-  const fetchStockData = async () => {
+  const fetchMarketCodes = async () => {
     try {
       setLoading(true);
       setError('');
@@ -32,14 +31,11 @@ function Dashboard({ onClose }) {
       const data = await response.json();
       
       if (response.ok) {
-        setAllStockData(data);
-        setStockData(data);
-        
         // Extract unique market codes
         const uniqueMarketCodes = [...new Set(data.map(item => item.MarketCode))];
         setMarketCodes(uniqueMarketCodes);
       } else {
-        setError('Failed to fetch stock data: ' + (data.error || 'Unknown error'));
+        setError('Failed to fetch market codes: ' + (data.error || 'Unknown error'));
       }
     } catch (err) {
       setError('Error: ' + err.message);
@@ -50,17 +46,25 @@ function Dashboard({ onClose }) {
 
   const filterByMarketCode = () => {
     if (!selectedMarketCode) {
-      // If no market code is selected, show all data
-      setStockData(allStockData);
+      // If no market code is selected, clear data
+      setStockData([]);
       return;
     }
     
     // Filter the data by selected market code
-    const filteredData = allStockData.filter(item => 
-      item.MarketCode === selectedMarketCode
-    );
-    
-    setStockData(filteredData);
+    fetch('http://localhost:5000/api/stock-data-with-beta')
+      .then(response => response.json())
+      .then(data => {
+        if (data) {
+          const filteredData = data.filter(item => 
+            item.MarketCode === selectedMarketCode
+          );
+          setStockData(filteredData);
+        }
+      })
+      .catch(err => {
+        setError('Error filtering data: ' + err.message);
+      });
   };
 
   const handleMenuChange = (menuItem) => {
@@ -151,7 +155,7 @@ function Dashboard({ onClose }) {
                   onChange={(e) => setSelectedMarketCode(e.target.value)}
                   className="market-code-select"
                 >
-                  <option value="">-- All Market Codes --</option>
+                  <option value="">-- Select Market Code --</option>
                   {marketCodes.map((code, index) => (
                     <option key={index} value={code}>{code}</option>
                   ))}
@@ -159,44 +163,51 @@ function Dashboard({ onClose }) {
                 <button 
                   onClick={filterByMarketCode}
                   className="filter-btn"
+                  disabled={!selectedMarketCode}
                 >
-                  Filter
+                  Load Data
                 </button>
               </div>
             </div>
             
-            {loading && <div className="loading-indicator">Loading stock data...</div>}
+            {loading && <div className="loading-indicator">Loading data...</div>}
             {error && <div className="error-message">{error}</div>}
             
             <div className="stock-table-container">
-              <table className="stock-table">
-                <thead>
-                  <tr>
-                    <th>Market Code</th>
-                    <th>Ticker</th>
-                    <th>Open Price</th>
-                    <th>Current Price</th>
-                    <th>Profit / Loss (%)</th>
-                    <th>Beta</th>
-                    <th>Risk level</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stockData.map((stock, index) => (
-                    <tr key={index}>
-                      <td>{stock.MarketCode}</td>
-                      <td>{stock.Ticker}</td>
-                      <td>{stock.OpenPrice.toFixed(2)}</td>
-                      <td>{stock.CurrentPrice.toFixed(2)}</td>
-                      <td className={stock.ProfitLossPercent >= 0 ? 'profit' : 'loss'}>
-                        {stock.ProfitLossPercent.toFixed(2)}%
-                      </td>
-                      <td>{stock.beta !== null ? stock.beta.toFixed(4) : 'N/A'}</td>
-                      <td className={`risk-level ${stock.risk.toLowerCase()}`}>{stock.risk}</td>
+              {stockData.length > 0 ? (
+                <table className="stock-table">
+                  <thead>
+                    <tr>
+                      <th>Market Code</th>
+                      <th>Ticker</th>
+                      <th>Open Price</th>
+                      <th>Current Price</th>
+                      <th>Profit / Loss (%)</th>
+                      <th>Beta</th>
+                      <th>Risk level</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {stockData.map((stock, index) => (
+                      <tr key={index}>
+                        <td>{stock.MarketCode}</td>
+                        <td>{stock.Ticker}</td>
+                        <td>{stock.OpenPrice.toFixed(2)}</td>
+                        <td>{stock.CurrentPrice.toFixed(2)}</td>
+                        <td className={stock.ProfitLossPercent >= 0 ? 'profit' : 'loss'}>
+                          {stock.ProfitLossPercent.toFixed(2)}%
+                        </td>
+                        <td>{stock.beta !== null ? stock.beta.toFixed(4) : 'N/A'}</td>
+                        <td className={`risk-level ${stock.risk.toLowerCase()}`}>{stock.risk}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="no-data-message">
+                  {!selectedMarketCode ? "Please select a market code to load data" : "No data available for the selected market code"}
+                </div>
+              )}
             </div>
           </div>
         </div>
