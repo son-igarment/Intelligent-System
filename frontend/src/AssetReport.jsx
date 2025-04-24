@@ -50,10 +50,6 @@ function AssetReport({ onClose, onMenuChange }) {
           <div className="sidebar-item" onClick={() => onMenuChange('import')}>
             Data Import
           </div>
-          
-          <div className="sidebar-item" onClick={() => onMenuChange('market-index')}>
-            Market Index
-          </div>
         </div>
         
         {/* Main Content */}

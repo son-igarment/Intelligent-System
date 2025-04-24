@@ -92,11 +92,7 @@ function Dashboard({ onClose }) {
                onClick={() => handleMenuChange('import')}>
             Data Import
           </div>
-          
-          <div className={`sidebar-item ${activeMenu === 'market-index' ? 'active' : ''}`}
-               onClick={() => handleMenuChange('market-index')}>
-            Market Index
-          </div>
+
         </div>
         
         {/* Main Content */}

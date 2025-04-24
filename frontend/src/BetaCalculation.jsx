@@ -334,19 +334,8 @@ function BetaCalculation({ onClose, onMenuChange }) {
                 <h3 className="section-title">Tính toán hệ số Beta (β)</h3>
                 
                 <div className="days-prediction-selector" style={styles.daysPredictionSelector}>
-                  <label htmlFor="days-prediction" style={styles.label}>Số ngày dự đoán:</label>
-                  <select 
-                    id="days-prediction"
-                    value={daysToPrediction} 
-                    onChange={(e) => setDaysToPrediction(parseInt(e.target.value))}
-                    className={styles.daysSelect}
-                  >
-                    <option value="1">1 ngày</option>
-                    <option value="3">3 ngày</option>
-                    <option value="5">5 ngày</option>
-                    <option value="10">10 ngày</option>
-                    <option value="30">30 ngày</option>
-                  </select>
+   
+                 
                 </div>
                 
                 <div className="calculation-options">
@@ -366,6 +355,7 @@ function BetaCalculation({ onClose, onMenuChange }) {
                       value={selectedTicker} 
                       onChange={(e) => setSelectedTicker(e.target.value)}
                       className="ticker-select"
+                      disabled={!selectedStock}
                     >
                       <option value="">-- Chọn ticker --</option>
                       {filteredTickers.map(ticker => (
@@ -390,147 +380,9 @@ function BetaCalculation({ onClose, onMenuChange }) {
                     >
                       Tính Beta cho tất cả các mã
                     </button>
-                  </div>
-                  
-                  <div className="option-group">
-                    <button 
-                      className="portfolio-btn" 
-                      onClick={() => setShowPortfolio(!showPortfolio)}
-                    >
-                      {showPortfolio ? 'Ẩn tính toán danh mục' : 'Tính Beta cho danh mục đầu tư'}
-                    </button>
-                  </div>
+                  </div>                    
                 </div>
-                
-                {showPortfolio && (
-                  <div className="portfolio-section">
-                    <h4>Tính hệ số Beta cho danh mục đầu tư</h4>
-                    <div className="portfolio-builder">
-                      <div className="add-to-portfolio">
-                        <select 
-                          value={selectedStock} 
-                          onChange={(e) => setSelectedStock(e.target.value)}
-                          className="stock-select"
-                        >
-                          <option value="">-- Chọn market code --</option>
-                          {stocks.map(stock => (
-                            <option key={stock} value={stock}>{stock}</option>
-                          ))}
-                        </select>
-                        
-                        <select 
-                          value={selectedTicker} 
-                          onChange={(e) => setSelectedTicker(e.target.value)}
-                          className="ticker-select"
-                        >
-                          <option value="">-- Chọn ticker --</option>
-                          {filteredTickers.map(ticker => (
-                            <option key={ticker} value={ticker}>{ticker}</option>
-                          ))}
-                        </select>
-                        
-                        <button 
-                          onClick={() => selectedTicker && addToPortfolio(selectedTicker)}
-                          disabled={!selectedTicker}
-                          className="add-btn"
-                        >
-                          Thêm vào danh mục
-                        </button>
-                      </div>
-                      
-                      {Object.keys(portfolio).length > 0 && (
-                        <div className="portfolio-items">
-                          <h5>Các mã trong danh mục:</h5>
-                          <table className="portfolio-table">
-                            <thead>
-                              <tr>
-                                <th>Mã CK</th>
-                                <th>Trọng số</th>
-                                <th>Hành động</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {Object.entries(portfolio).map(([code, weight]) => (
-                                <tr key={code}>
-                                  <td>{code}</td>
-                                  <td>
-                                    <input 
-                                      type="number" 
-                                      min="0.1" 
-                                      step="0.1"
-                                      value={weight}
-                                      onChange={(e) => updateWeight(code, e.target.value)}
-                                      className="weight-input"
-                                    />
-                                  </td>
-                                  <td>
-                                    <button 
-                                      onClick={() => removeFromPortfolio(code)}
-                                      className="remove-btn"
-                                    >
-                                      Xóa
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                          
-                          <button 
-                            onClick={calculatePortfolioBeta}
-                            className="calculate-portfolio-btn"
-                            disabled={loading}
-                          >
-                            Tính Beta cho danh mục
-                          </button>
-                        </div>
-                      )}
-                      
-                      {portfolioBeta && (
-                        <div className="portfolio-result">
-                          <h5>Kết quả tính toán Beta cho danh mục:</h5>
-                          <div className="beta-result">
-                            <div className="beta-value" style={{ color: getBetaColor(portfolioBeta.portfolio_beta) }}>
-                              β = {portfolioBeta.portfolio_beta !== null ? portfolioBeta.portfolio_beta.toFixed(4) : 'N/A'}
-                            </div>
-                            <div className="beta-interpretation">
-                              {portfolioBeta.interpretation}
-                            </div>
-                          </div>
-                          
-                          {portfolioBeta.component_betas && (
-                            <div className="component-betas">
-                              <h6>Đóng góp của từng mã:</h6>
-                              <table className="component-table">
-                                <thead>
-                                  <tr>
-                                    <th>Mã CK</th>
-                                    <th>Beta</th>
-                                    <th>Trọng số</th>
-                                    <th>Beta × Trọng số</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {portfolioBeta.component_betas.map((item, index) => (
-                                    <tr key={index}>
-                                      <td>{item.stock_code}</td>
-                                      <td style={{ color: getBetaColor(item.beta) }}>
-                                        {item.beta.toFixed(4)}
-                                      </td>
-                                      <td>{item.weight.toFixed(2)}</td>
-                                      <td>{item.weighted_beta.toFixed(4)}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                
+                                     
                 {loading && (
                   <div className="loading-indicator">
                     <p>Đang tính toán hệ số Beta...</p>
