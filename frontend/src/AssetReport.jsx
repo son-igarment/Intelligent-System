@@ -5,6 +5,9 @@ function AssetReport({ onClose, onMenuChange }) {
   const currentDate = "2025-03-28";
   
   const [assetData, setAssetData] = useState([]);
+  const [allAssetData, setAllAssetData] = useState([]); // To keep original data
+  const [marketCodes, setMarketCodes] = useState([]);
+  const [selectedMarketCode, setSelectedMarketCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,7 +24,12 @@ function AssetReport({ onClose, onMenuChange }) {
       const data = await response.json();
       
       if (response.ok) {
+        setAllAssetData(data);
         setAssetData(data);
+        
+        // Extract unique market codes
+        const uniqueMarketCodes = [...new Set(data.map(item => item.MarketCode))];
+        setMarketCodes(uniqueMarketCodes);
       } else {
         setError('Failed to fetch asset data: ' + (data.error || 'Unknown error'));
       }
@@ -30,6 +38,21 @@ function AssetReport({ onClose, onMenuChange }) {
     } finally {
       setLoading(false);
     }
+  };
+  
+  const filterByMarketCode = () => {
+    if (!selectedMarketCode) {
+      // If no market code is selected, show all data
+      setAssetData(allAssetData);
+      return;
+    }
+    
+    // Filter the data by selected market code
+    const filteredData = allAssetData.filter(item => 
+      item.MarketCode === selectedMarketCode
+    );
+    
+    setAssetData(filteredData);
   };
 
   return (
@@ -77,6 +100,26 @@ function AssetReport({ onClose, onMenuChange }) {
               <div className="report-dates">
                 <div>Report date: <strong>{currentDate}</strong>.</div>
                 <div>Lastest update date: <strong>{currentDate}</strong>.</div>
+              </div>
+              
+              {/* Filter Controls */}
+              <div className="filter-controls">
+                <select 
+                  value={selectedMarketCode}
+                  onChange={(e) => setSelectedMarketCode(e.target.value)}
+                  className="market-code-select"
+                >
+                  <option value="">-- All Market Codes --</option>
+                  {marketCodes.map((code, index) => (
+                    <option key={index} value={code}>{code}</option>
+                  ))}
+                </select>
+                <button 
+                  onClick={filterByMarketCode}
+                  className="filter-btn"
+                >
+                  Filter
+                </button>
               </div>
             </div>
             
