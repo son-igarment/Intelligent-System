@@ -24,10 +24,10 @@ def prepare_features(stock_data, beta_values, days_to_predict=5):
     df['TradeDate'] = pd.to_datetime(df['TradeDate'])
     
     # Sort by date
-    df = df.sort_values(['MarketCode', 'TradeDate'])
+    df = df.sort_values(['MarketCode', 'Ticker', 'TradeDate'])
     
     # Group by stock code to process each stock individually
-    grouped = df.groupby('MarketCode')
+    grouped = df.groupby(['MarketCode', 'Ticker'])
     
     # Initialize lists to store results
     all_features = []
@@ -43,12 +43,13 @@ def prepare_features(stock_data, beta_values, days_to_predict=5):
         
     print(f"Using threshold of {threshold_pct}% for price movement classification with days_to_predict={days_to_predict}")
     
-    for stock_code, group in grouped:
+    for code, group in grouped:
         # Skip if less than 10 data points
         if len(group) < 10:
             continue
         
         # Get beta value for this stock
+        stock_code = ':'.join(code)
         beta_value = None
         if beta_values is not None:
             beta_row = beta_values[beta_values['stock_code'] == stock_code]
@@ -136,7 +137,7 @@ def calculate_technical_indicators(df):
     df['daily_ret'] = df['ClosePrice'].astype(float).pct_change()
     df['direction'] = np.where(df['daily_ret'] > 0, 1, -1)
     df['direction'][df['daily_ret'] == 0] = 0
-    df['obv'] = (df['TotalVolume'] * df['direction']).cumsum()
+    df['obv'] = (pd.to_numeric(df['TotalVolume']) * df['direction']).cumsum()
     
     # ATR (Average True Range)
     df['high_low'] = df['HighestPrice'].astype(float) - df['LowestPrice'].astype(float)
@@ -259,7 +260,7 @@ def get_prediction_label(prediction):
     else:
         return "Giảm giá", "strong_sell"
 
-def analyze_stocks_with_svm(stock_data, beta_values, days_to_predict=5, market_code=None, ticker=None):
+def analyze_stocks_with_svm(stock_data, beta_values, days_to_predict=5):
     """
     Analyze stocks with SVM model to predict price movements
     
@@ -277,24 +278,8 @@ def analyze_stocks_with_svm(stock_data, beta_values, days_to_predict=5, market_c
         # Filter the stock data if market_code or ticker is specified
         filtered_data = stock_data.copy()
         
-        if market_code:
-            filtered_data = filtered_data[filtered_data['MarketCode'] == market_code]
-            if filtered_data.empty:
-                return {
-                    "success": False,
-                    "error": f"No data found for MarketCode: {market_code}"
-                }
-        
-        if ticker:
-            filtered_data = filtered_data[filtered_data['Ticker'] == ticker]
-            if filtered_data.empty:
-                return {
-                    "success": False,
-                    "error": f"No data found for Ticker: {ticker}"
-                }
-        
         # Prepare features
-        X, y, dates, stock_codes = prepare_features(filtered_data, beta_values, days_to_predict)
+        X, y, stock_codes, dates = prepare_features(filtered_data, beta_values, days_to_predict)
         
         if len(X) == 0 or len(y) == 0:
             return {

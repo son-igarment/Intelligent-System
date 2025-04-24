@@ -607,14 +607,18 @@ def svm_analysis():
         use_beta = request_data.get('use_beta', True)
         market_code = request_data.get('market_code')
         ticker = request_data.get('ticker')
+
+        if not market_code or not ticker:
+            return jsonify({"error": "Market code and ticker are required"}), 400
         
         # Get stock data from MongoDB
-        stock_data = list(current_app.db.stock_data.find({}, {'_id': 0}))
+        stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code}, {'_id': 0}))
         if not stock_data:
             return jsonify({"error": "No stock data available for analysis"}), 404
         
         # Convert to DataFrame
         stock_df = pd.DataFrame(stock_data)
+        specific_df = stock_df[stock_df['Ticker'] == ticker]
         
         # Get beta values if requested
         beta_values = None
@@ -630,19 +634,29 @@ def svm_analysis():
                 print(f"No beta values found for prediction horizon {days_to_predict}, calculating new ones...")
                 
                 # Lấy thị trường để tính beta
-                market_data = list(current_app.db.market_index_data.find({}, {'_id': 0}))
-                
+                if market_code == "HOSE":
+                    mc = "HSX"
+                elif market_code == "UPCOM":
+                    mc = "Upcom"
+                else:
+                    mc = market_code
+                market_data = list(current_app.db.market_index_data.find({'MarketCode': mc}, {'_id': 0}))
+
+                # Normalize index codes - handle different naming conventions
+                code_mapping = {
+                    'HSX': 'VNINDEX',
+                    'HOSE': 'VNINDEX',
+                    'HNX': 'HNXIndex',
+                    'UPCOM': 'UpcomIndex',
+                    'Upcom': 'UpcomIndex',
+                }
+                specific_market_df = None
                 if market_data:
                     # Convert to DataFrame
                     market_df = pd.DataFrame(market_data)
-                    
-                    # Normalize index codes - handle different naming conventions
-                    code_mapping = {
-                        'HSX': 'VNIndex',
-                        'HOSE': 'VNIndex',
-                        'HNX': 'HNXIndex'
-                    }
-                    
+
+                    specific_market_df = market_df[market_df['IndexCode'] == code_mapping[mc]]
+
                     if 'IndexCode' in market_df.columns:
                         market_df['IndexCode'] = market_df['IndexCode'].apply(
                             lambda x: code_mapping.get(x, x) if isinstance(x, str) else x
@@ -674,7 +688,7 @@ def svm_analysis():
                 # Tính beta cho tất cả cổ phiếu
                 beta_records = []
                 for code in stock_df['MarketCode'].unique():
-                    beta_result = get_beta_for_stock(stock_df, market_df, code, None, days_to_predict)
+                    beta_result = get_beta_for_stock(specific_df, specific_market_df, code, None, days_to_predict)
                     if beta_result['beta'] is not None:
                         beta_records.append({
                             'stock_code': beta_result['stock_code'],
@@ -693,9 +707,11 @@ def svm_analysis():
             # Chuyển đổi thành DataFrame
             if beta_data:
                 beta_values = pd.DataFrame(beta_data)
+
+        specific_beta_values = beta_values[(beta_values['market_code'] == market_code) & (beta_values['ticker'] == ticker)]
         
         # Perform SVM analysis with market_code and ticker
-        analysis_result = analyze_stocks_with_svm(stock_df, beta_values, days_to_predict, market_code, ticker)
+        analysis_result = analyze_stocks_with_svm(specific_df, specific_beta_values, days_to_predict)
         
         if not analysis_result["success"]:
             return jsonify({"error": analysis_result["error"]}), 400
