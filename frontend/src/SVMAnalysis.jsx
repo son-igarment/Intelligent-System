@@ -75,7 +75,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
       // Build query parameters for market_code and ticker if selected
       let queryParams = new URLSearchParams();
       if (selectedStock) {
-        queryParams.append('market_code', selectedStock);
+        queryParams.append('market_code', market_code);
       }
       if (selectedTicker) {
         queryParams.append('ticker', selectedTicker);
@@ -107,23 +107,21 @@ function SVMAnalysis({ onClose, onMenuChange }) {
 
   // Perform SVM analysis
   const runSVMAnalysis = async () => {
+    if (!selectedStock || !selectedTicker) {
+      setError('Vui lòng chọn cả Market Code và Ticker để thực hiện phân tích');
+      return;
+    }
+    
     try {
       setLoading(true);
       setError('');
       
       const requestBody = {
         days_to_predict: parseInt(daysToPrediction),
-        use_beta: useBeta
+        use_beta: useBeta,
+        market_code: selectedStock,
+        ticker: selectedTicker
       };
-      
-      // Add market_code and ticker to the request if selected
-      if (selectedStock) {
-        requestBody.market_code = selectedStock;
-      }
-      
-      if (selectedTicker) {
-        requestBody.ticker = selectedTicker;
-      }
       
       const response = await fetch('http://localhost:5000/api/svm-analysis', {
         method: 'POST',
@@ -263,7 +261,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
                       onChange={(e) => setSelectedStock(e.target.value)}
                       className="stock-select"
                     >
-                      <option value="">-- Chọn market code --</option>
+                      <option value="">-- Chọn market code * --</option>
                       {stocks.map(stock => (
                         <option key={stock} value={stock}>{stock}</option>
                       ))}
@@ -274,7 +272,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
                       onChange={(e) => setSelectedTicker(e.target.value)}
                       className="ticker-select"
                     >
-                      <option value="">-- Chọn ticker --</option>
+                      <option value="">-- Chọn ticker * --</option>
                       {filteredTickers.map(ticker => (
                         <option key={ticker} value={ticker}>{ticker}</option>
                       ))}
@@ -314,7 +312,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
                   <button 
                     className="calculate-btn" 
                     onClick={runSVMAnalysis}
-                    disabled={loading}
+                    disabled={loading || !selectedStock || !selectedTicker}
                   >
                     {loading ? 'Đang phân tích...' : 'Bắt đầu phân tích'}
                   </button>
@@ -428,7 +426,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
                 
                 {(!latestAnalysis || !latestAnalysis.predictions) && !loading && !error && (
                   <div className="no-analysis">
-                    <p>Chưa có dữ liệu phân tích. Hãy chạy phân tích SVM để bắt đầu.</p>
+                    <p>Chưa có dữ liệu phân tích. Vui lòng chọn Market Code và Ticker sau đó chạy phân tích SVM để bắt đầu.</p>
                   </div>
                 )}
               </div>

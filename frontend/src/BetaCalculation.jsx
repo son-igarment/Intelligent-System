@@ -18,6 +18,25 @@ function BetaCalculation({ onClose, onMenuChange }) {
   const [portfolioBeta, setPortfolioBeta] = useState(null);
   const [daysToPrediction, setDaysToPrediction] = useState(5);
 
+  // CSS styles
+  const styles = {
+    daysPredictionSelector: {
+      marginBottom: '15px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px'
+    },
+    daysSelect: {
+      padding: '8px',
+      borderRadius: '4px',
+      border: '1px solid #ddd',
+      width: '120px'
+    },
+    label: {
+      fontWeight: 'bold'
+    }
+  };
+
   // Fetch stocks and tickers on component load
   useEffect(() => {
     fetchStocksAndTickers();
@@ -87,9 +106,18 @@ function BetaCalculation({ onClose, onMenuChange }) {
       const data = await response.json();
       
       if (response.ok) {
-        setBetaResults(data);
-        setCalculationDate(new Date().toLocaleString());
-        alert(`Đã tính toán hệ số Beta cho ${data.length} mã chứng khoán`);
+        // Filter out any null beta values and ensure we have valid results
+        const validResults = Array.isArray(data) 
+          ? data.filter(item => item.beta !== null && item.beta !== undefined)
+          : data.beta !== null && data.beta !== undefined ? [data] : [];
+        
+        if (validResults.length > 0) {
+          setBetaResults(validResults);
+          setCalculationDate(new Date().toLocaleString());
+          alert(`Đã tính toán hệ số Beta cho ${validResults.length} mã chứng khoán`);
+        } else {
+          setError('Không có kết quả Beta hợp lệ nào được tính toán');
+        }
       } else {
         setError(data.error || 'Lỗi khi tính toán Beta');
       }
@@ -135,12 +163,19 @@ function BetaCalculation({ onClose, onMenuChange }) {
       const data = await response.json();
       
       if (response.ok) {
-        if (data.beta === null) {
-          setError(data.error || 'Không thể tính toán Beta cho mã này');
+        // Check if data is an array (multiple results) or a single object
+        if (Array.isArray(data)) {
+          // If it's an array, use it directly
+          setBetaResults(data);
         } else {
-          setBetaResults([data]);
-          setCalculationDate(new Date().toLocaleString());
+          // If it's a single object, put it in an array
+          if (data.beta === null || data.beta === undefined) {
+            setError(data.error || 'Không thể tính toán Beta cho mã này');
+          } else {
+            setBetaResults([data]);
+          }
         }
+        setCalculationDate(new Date().toLocaleString());
       } else {
         setError(data.error || 'Lỗi khi tính toán Beta');
       }
@@ -153,6 +188,11 @@ function BetaCalculation({ onClose, onMenuChange }) {
 
   // Add stock to portfolio
   const addToPortfolio = (stockCode) => {
+    if (!stockCode) {
+      setError('Không thể thêm mã này vào danh mục');
+      return;
+    }
+    
     setPortfolio({
       ...portfolio,
       [stockCode]: portfolio[stockCode] ? portfolio[stockCode] : 1
@@ -292,6 +332,22 @@ function BetaCalculation({ onClose, onMenuChange }) {
             <div className="beta-calculation-container">
               <div className="calculation-section">
                 <h3 className="section-title">Tính toán hệ số Beta (β)</h3>
+                
+                <div className="days-prediction-selector" style={styles.daysPredictionSelector}>
+                  <label htmlFor="days-prediction" style={styles.label}>Số ngày dự đoán:</label>
+                  <select 
+                    id="days-prediction"
+                    value={daysToPrediction} 
+                    onChange={(e) => setDaysToPrediction(parseInt(e.target.value))}
+                    className={styles.daysSelect}
+                  >
+                    <option value="1">1 ngày</option>
+                    <option value="3">3 ngày</option>
+                    <option value="5">5 ngày</option>
+                    <option value="10">10 ngày</option>
+                    <option value="30">30 ngày</option>
+                  </select>
+                </div>
                 
                 <div className="calculation-options">
                   <div className="option-group">
@@ -503,16 +559,17 @@ function BetaCalculation({ onClose, onMenuChange }) {
                         <tbody>
                           {betaResults.map((result, index) => (
                             <tr key={index}>
-                              <td>{result.stock_code}</td>
+                              <td>{result.stock_code || `${result.market_code}:${result.ticker}` || 'N/A'}</td>
                               <td style={{ color: getBetaColor(result.beta) }}>
-                                {result.beta !== null ? result.beta.toFixed(4) : 'N/A'}
+                                {result.beta !== null && result.beta !== undefined ? result.beta.toFixed(4) : 'N/A'}
                               </td>
-                              <td>{result.interpretation}</td>
+                              <td>{result.interpretation || 'Không có đánh giá'}</td>
                               <td>
                                 <button 
-                                  onClick={() => addToPortfolio(result.stock_code)}
+                                  onClick={() => addToPortfolio(result.stock_code || `${result.market_code}:${result.ticker}`)}
                                   className="add-to-portfolio-btn"
                                   title="Thêm vào danh mục"
+                                  disabled={!result.stock_code && !(result.market_code && result.ticker)}
                                 >
                                   +
                                 </button>
