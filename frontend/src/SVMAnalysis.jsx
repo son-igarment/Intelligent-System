@@ -22,36 +22,6 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
       marginBottom: '15px',
       textAlign: 'center'
     },
-    barChart: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '15px'
-    },
-    barGroup: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '5px',
-    },
-    barHeader: {
-      display: 'flex',
-      justifyContent: 'space-between'
-    },
-    barContainer: {
-      height: '25px',
-      width: '100%',
-      backgroundColor: '#e0e0e0',
-      borderRadius: '4px',
-      overflow: 'hidden'
-    },
-    barFill: {
-      height: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      paddingLeft: '10px',
-      color: 'white',
-      fontWeight: 'bold',
-      transition: 'width 1s ease-in-out'
-    },
     chartRow: {
       display: 'flex',
       gap: '20px',
@@ -149,27 +119,6 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
   return (
     <div style={styles.chartContainer}>
       <h4 style={styles.chartTitle}>Biểu đồ dự đoán SVM</h4>
-      <div style={styles.barChart}>
-        {predictions.map((prediction, index) => (
-          <div key={index} style={styles.barGroup}>
-            <div style={styles.barHeader}>
-              <strong>{prediction.stock_code}</strong>
-              <span>{getPredictionLabel(prediction.signal)} ({formatConfidence(prediction.confidence)})</span>
-            </div>
-            <div style={styles.barContainer}>
-              <div 
-                style={{
-                  ...styles.barFill,
-                  width: `${prediction.confidence * 100}%`,
-                  backgroundColor: getPredictionColor(prediction.signal)
-                }}
-              >
-                {prediction.prediction_label}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
 
       <div style={styles.chartRow}>
         <div style={styles.pieContainer}>
@@ -342,12 +291,9 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
         <div style={{marginTop: '30px', border: '1px solid #ddd', borderRadius: '8px', padding: '15px'}}>
           <h5 style={{textAlign: 'center', marginBottom: '15px'}}>Dự báo xu hướng giá</h5>
           <div style={{
-            display: 'flex',
-            alignItems: 'flex-end',
             height: '200px',
-            gap: '8px',
-            padding: '10px',
-            position: 'relative'
+            position: 'relative',
+            padding: '10px 0'
           }}>
             {/* Horizontal grid lines */}
             <div style={{
@@ -355,63 +301,89 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
               left: 0,
               right: 0,
               top: 0,
-              bottom: 0,
+              bottom: 20,
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
               pointerEvents: 'none'
             }}>
-              {[0, 1, 2, 3].map(i => (
+              {[0, 1, 2, 3, 4].map(i => (
                 <div key={i} style={{
-                  borderBottom: i < 3 ? '1px dashed #ddd' : 'none',
-                  flex: 1
-                }}></div>
+                  borderBottom: i < 4 ? '1px dashed #ddd' : 'none',
+                  height: '20%',
+                  position: 'relative'
+                }}>
+                  {i < 4 && (
+                    <span style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      fontSize: '11px',
+                      color: '#666'
+                    }}>
+                      {Math.round(Math.max(...predictions[0].price_trend) - (i * (Math.max(...predictions[0].price_trend) - Math.min(...predictions[0].price_trend)) / 4))}
+                    </span>
+                  )}
+                </div>
               ))}
             </div>
             
-            {/* Price bars */}
-            {predictions[0].price_trend.map((price, idx) => {
-              const isPositive = idx > 0 ? price >= predictions[0].price_trend[idx-1] : true;
-              const height = `${Math.max(30, price / Math.max(...predictions[0].price_trend) * 150)}px`;
+            {/* Line chart */}
+            <svg width="100%" height="100%" style={{paddingLeft: '30px'}}>
+              {/* Create points for the polyline */}
+              {(() => {
+                const maxPrice = Math.max(...predictions[0].price_trend);
+                const minPrice = Math.min(...predictions[0].price_trend);
+                const range = maxPrice - minPrice;
+                const points = predictions[0].price_trend.map((price, idx) => {
+                  const x = (idx / (predictions[0].price_trend.length - 1)) * 400;
+                  // Convert price to y coordinate (180 is bottom, 0 is top)
+                  const y = 180 - ((price - minPrice) / range) * 160;
+                  return `${x},${y}`;
+                }).join(' ');
+                
+                return (
+                  <polyline 
+                    points={points}
+                    style={{
+                      fill: 'none',
+                      stroke: '#4a6da7',
+                      strokeWidth: 3
+                    }}
+                  />
+                );
+              })()}
               
-              return (
-                <div key={idx} style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                  position: 'relative',
-                  zIndex: 1
-                }}>
-                  <div style={{
-                    width: '80%',
-                    height,
-                    backgroundColor: isPositive ? 'rgba(0, 200, 83, 0.7)' : 'rgba(255, 61, 0, 0.7)',
-                    borderTopLeftRadius: '3px',
-                    borderTopRightRadius: '3px',
-                    position: 'relative'
-                  }}>
-                    <div style={{
-                      position: 'absolute',
-                      top: '-20px',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      fontSize: '12px',
-                      fontWeight: 'bold'
-                    }}>
-                      {price.toLocaleString()}
-                    </div>
-                  </div>
-                  <div style={{
-                    marginTop: '5px',
-                    fontSize: '11px'
-                  }}>
-                    {idx === 0 ? 'Hiện tại' : `Ngày ${idx}`}
-                  </div>
+              {/* Data points */}
+              {predictions[0].price_trend.map((price, idx) => {
+                const maxPrice = Math.max(...predictions[0].price_trend);
+                const minPrice = Math.min(...predictions[0].price_trend);
+                const range = maxPrice - minPrice;
+                const x = (idx / (predictions[0].price_trend.length - 1)) * 400;
+                const y = 180 - ((price - minPrice) / range) * 160;
+                
+                return (
+                  <g key={idx}>
+                    <circle cx={x} cy={y} r="5" fill="#4a6da7" />
+                    <text x={x} y={y-10} fontSize="11" textAnchor="middle" fill="#333">{price.toLocaleString()}</text>
+                  </g>
+                );
+              })}
+            </svg>
+            
+            {/* X-axis labels */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              padding: '0 30px',
+              marginTop: '5px'
+            }}>
+              {predictions[0].price_trend.map((_, idx) => (
+                <div key={idx} style={{fontSize: '11px', color: '#666'}}>
+                  {idx === 0 ? 'Hiện tại' : `Ngày ${idx}`}
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
           
           <div style={{
@@ -427,91 +399,97 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
       )}
 
       {/* Price Trend Chart - Simulated version */}
-      <div style={{marginTop: '30px', border: '1px solid #ddd', borderRadius: '8px', padding: '15px'}}>
-        <h5 style={{textAlign: 'center', marginBottom: '15px'}}>Dự báo xu hướng giá</h5>
-        <div style={{
-          display: 'flex',
-          alignItems: 'flex-end',
-          height: '200px',
-          gap: '8px',
-          padding: '10px',
-          position: 'relative'
-        }}>
-          {/* Horizontal grid lines */}
+      {(!predictions.length || !predictions[0].price_trend) && (
+        <div style={{marginTop: '30px', border: '1px solid #ddd', borderRadius: '8px', padding: '15px'}}>
+          <h5 style={{textAlign: 'center', marginBottom: '15px'}}>Dự báo xu hướng giá</h5>
           <div style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            pointerEvents: 'none'
+            height: '200px',
+            position: 'relative',
+            padding: '10px 0'
           }}>
-            {[0, 1, 2, 3].map(i => (
-              <div key={i} style={{
-                borderBottom: i < 3 ? '1px dashed #ddd' : 'none',
-                flex: 1
-              }}></div>
-            ))}
-          </div>
-          
-          {/* Price bars - Use simulated data */}
-          {[100, 105, 110, 108, 115].map((price, idx) => {
-            const isPositive = idx > 0 ? price >= [100, 105, 110, 108, 115][idx-1] : true;
-            const height = `${Math.max(30, price / Math.max(...[100, 105, 110, 108, 115]) * 150)}px`;
-            
-            return (
-              <div key={idx} style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                position: 'relative',
-                zIndex: 1
-              }}>
-                <div style={{
-                  width: '80%',
-                  height,
-                  backgroundColor: isPositive ? 'rgba(0, 200, 83, 0.7)' : 'rgba(255, 61, 0, 0.7)',
-                  borderTopLeftRadius: '3px',
-                  borderTopRightRadius: '3px',
+            {/* Horizontal grid lines */}
+            <div style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 20,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              pointerEvents: 'none'
+            }}>
+              {[0, 1, 2, 3, 4].map(i => (
+                <div key={i} style={{
+                  borderBottom: i < 4 ? '1px dashed #ddd' : 'none',
+                  height: '20%',
                   position: 'relative'
                 }}>
-                  <div style={{
-                    position: 'absolute',
-                    top: '-20px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }}>
-                    {price.toLocaleString()}
-                  </div>
+                  {i < 4 && (
+                    <span style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      fontSize: '11px',
+                      color: '#666'
+                    }}>
+                      {115 - (i * 5)}
+                    </span>
+                  )}
                 </div>
-                <div style={{
-                  marginTop: '5px',
-                  fontSize: '11px'
-                }}>
-                  {idx === 0 ? 'Hiện tại' : `Ngày ${idx}`}
-                </div>
-              </div>
-            );
-          })}
+              ))}
+            </div>
+            
+            {/* Line chart */}
+            <svg width="100%" height="100%" style={{paddingLeft: '30px'}}>
+              {/* Simulated data line */}
+              <polyline 
+                points="0,80 100,60 200,40 300,48 400,20" 
+                style={{
+                  fill: 'none',
+                  stroke: '#4a6da7',
+                  strokeWidth: 3
+                }}
+              />
+              
+              {/* Data points with simulated values */}
+              {[100, 105, 110, 108, 115].map((price, idx) => {
+                const x = (idx / 4) * 400;
+                const y = 180 - ((price - 100) / 15) * 160;
+                
+                return (
+                  <g key={idx}>
+                    <circle cx={x} cy={y} r="5" fill="#4a6da7" />
+                    <text x={x} y={y-10} fontSize="11" textAnchor="middle" fill="#333">{price.toLocaleString()}</text>
+                  </g>
+                );
+              })}
+            </svg>
+            
+            {/* X-axis labels */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              padding: '0 30px',
+              marginTop: '5px'
+            }}>
+              {['Hiện tại', 'Ngày 1', 'Ngày 2', 'Ngày 3', 'Ngày 4'].map((label, i) => (
+                <div key={i} style={{fontSize: '11px', color: '#666'}}>{label}</div>
+              ))}
+            </div>
+          </div>
+          
+          <div style={{
+            marginTop: '15px',
+            textAlign: 'center',
+            fontSize: '13px',
+            fontStyle: 'italic',
+            color: '#666'
+          }}>
+            Dự báo xu hướng giá trong 4 ngày tới dựa trên mô hình SVM
+          </div>
         </div>
-        
-        <div style={{
-          marginTop: '15px',
-          textAlign: 'center',
-          fontSize: '13px',
-          fontStyle: 'italic',
-          color: '#666'
-        }}>
-          Dự báo xu hướng giá trong {4} ngày tới dựa trên mô hình SVM
-        </div>
-      </div>
+      )}
     </div>
   );
 };
