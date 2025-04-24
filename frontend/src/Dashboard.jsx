@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AssetReport from './AssetReport';
 import AnalystTool from './AnalystTool';
 import DataImport from './DataImport';
@@ -10,15 +10,35 @@ import './App.css';
 function Dashboard({ onClose }) {
   const currentDate = "2025-03-28";
   
-  const stockData = [
-    { id: 1, name: "ABC", industry: "Banking", cost: 19.500, price: 20.000, profit: "+2.56%", beta: "+1.0181", risk: "Medium" },
-    { id: 2, name: "BCD", industry: "Real Estate", cost: 36.000, price: 33.000, profit: "-8.33%", beta: "-2.077", risk: "High" },
-    { id: 3, name: "EFG", industry: "Technology", cost: 56.000, price: 50.000, profit: "-8.33%", beta: "-2.6689", risk: "High" },
-    { id: 4, name: "NAV", industry: "Net Asset Value", cost: 11.000, price: 12.000, profit: "+9.09%", beta: "-0.9221", risk: "High" },
-    { id: 5, name: "VN-Index", industry: "Indice", cost: 1100.00, price: 1300.00, profit: "+18.18%", beta: "1.0000", risk: "High" }
-  ];
+  const [stockData, setStockData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const [activeMenu, setActiveMenu] = useState('dashboard');
+
+  useEffect(() => {
+    fetchStockData();
+  }, []);
+
+  const fetchStockData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await fetch('http://localhost:5000/api/stock-data-with-beta');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setStockData(data);
+      } else {
+        setError('Failed to fetch stock data: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      setError('Error: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleMenuChange = (menuItem) => {
     setActiveMenu(menuItem);
@@ -73,11 +93,6 @@ function Dashboard({ onClose }) {
             Assets report
           </div>
           
-          <div className={`sidebar-item ${activeMenu === 'tool' ? 'active' : ''}`}
-               onClick={() => handleMenuChange('tool')}>
-            Analyst tool
-          </div>
-          
           <div className={`sidebar-item ${activeMenu === 'beta' ? 'active' : ''}`}
                onClick={() => handleMenuChange('beta')}>
             Beta Calculation
@@ -107,32 +122,33 @@ function Dashboard({ onClose }) {
               </div>
             </div>
             
+            {loading && <div className="loading-indicator">Loading stock data...</div>}
+            {error && <div className="error-message">{error}</div>}
+            
             <div className="stock-table-container">
               <table className="stock-table">
                 <thead>
                   <tr>
-                    <th>Stock Name</th>
-                    <th>Industry</th>
-                    <th>Cost</th>
-                    <th>Cur.Price</th>
+                    <th>Market Code</th>
+                    <th>Ticker</th>
+                    <th>Open Price</th>
+                    <th>Current Price</th>
                     <th>Profit / Loss (%)</th>
                     <th>Beta</th>
                     <th>Risk level</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {stockData.map(stock => (
-                    <tr key={stock.id}>
-                      <td className={stock.name === "NAV" ? "highlight" : stock.name === "VN-Index" ? "yellow-highlight" : ""}>
-                        {stock.name}
+                  {stockData.map((stock, index) => (
+                    <tr key={index}>
+                      <td>{stock.MarketCode}</td>
+                      <td>{stock.Ticker}</td>
+                      <td>{stock.OpenPrice.toFixed(2)}</td>
+                      <td>{stock.CurrentPrice.toFixed(2)}</td>
+                      <td className={stock.ProfitLossPercent >= 0 ? 'profit' : 'loss'}>
+                        {stock.ProfitLossPercent.toFixed(2)}%
                       </td>
-                      <td>{stock.industry}</td>
-                      <td>{stock.cost.toFixed(3)}</td>
-                      <td>{stock.price.toFixed(3)}</td>
-                      <td className={stock.profit.startsWith('+') ? 'profit' : 'loss'}>
-                        {stock.profit}
-                      </td>
-                      <td>{stock.beta}</td>
+                      <td>{stock.beta !== null ? stock.beta.toFixed(4) : 'N/A'}</td>
                       <td className={`risk-level ${stock.risk.toLowerCase()}`}>{stock.risk}</td>
                     </tr>
                   ))}

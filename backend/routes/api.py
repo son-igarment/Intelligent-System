@@ -715,3 +715,87 @@ def get_latest_svm_analysis():
     except Exception as e:
         print(f"Error retrieving latest SVM analysis: {str(e)}")
         return jsonify({"error": f"Error retrieving latest SVM analysis: {str(e)}"}), 500
+
+# Endpoint to get stock data with calculations and beta values
+@api.route('/stock-data-with-beta', methods=['GET'])
+def get_stock_data_with_beta():
+    if not current_app.db:
+        return jsonify({"error": "Database connection not available"}), 500
+    
+    try:
+        # Get stock data
+        stock_data = list(current_app.db.stock_data.find({}, {'_id': 0}))
+        if not stock_data:
+            return jsonify({"error": "No stock data available"}), 404
+        
+        # Get beta values
+        beta_values = list(current_app.db.beta_values.find({}, {'_id': 0}))
+        
+        # Create a dictionary for quick lookup of beta values
+        beta_dict = {}
+        for beta in beta_values:
+            # Create a key using market_code and ticker
+            if 'market_code' in beta and 'ticker' in beta:
+                key = f"{beta['market_code']}:{beta['ticker']}"
+                beta_dict[key] = beta
+            # Also try with stock_code if available
+            elif 'stock_code' in beta:
+                beta_dict[beta['stock_code']] = beta
+        
+        # Process stock data
+        result = []
+        for stock in stock_data:
+            if 'MarketCode' not in stock or 'Ticker' not in stock:
+                continue
+                
+            # Extract basic fields
+            market_code = stock.get('MarketCode')
+            ticker = stock.get('Ticker')
+            close_price = float(stock.get('ClosePrice', 0))
+            total_volume = float(stock.get('TotalVolume', 0))
+            open_price = float(stock.get('OpenPrice', 0))
+            
+            # Calculate derived fields
+            current_price = total_volume * close_price
+            profit_loss = current_price - open_price
+            profit_loss_percent = 0
+            if open_price > 0:
+                profit_loss_percent = (profit_loss / open_price) * 100
+            
+            # Prepare stock entry
+            stock_entry = {
+                'MarketCode': market_code,
+                'Ticker': ticker,
+                'ClosePrice': close_price,
+                'TotalVolume': total_volume,
+                'OpenPrice': open_price,
+                'CurrentPrice': current_price,
+                'ProfitLoss': profit_loss,
+                'ProfitLossPercent': profit_loss_percent
+            }
+            
+            # Add beta and risk information if available
+            key = f"{market_code}:{ticker}"
+            if key in beta_dict:
+                beta_value = beta_dict[key].get('beta')
+                stock_entry['beta'] = beta_value
+                
+                # Determine risk based on beta value
+                if beta_value is not None:
+                    if beta_value == 1:
+                        stock_entry['risk'] = 'medium'
+                    else:  # beta > 1 or beta < 1
+                        stock_entry['risk'] = 'high'
+                else:
+                    stock_entry['risk'] = 'unknown'
+            else:
+                stock_entry['beta'] = None
+                stock_entry['risk'] = 'unknown'
+            
+            result.append(stock_entry)
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        print(f"Error getting stock data with beta: {str(e)}")
+        return jsonify({"error": f"Error getting stock data with beta: {str(e)}"}), 500

@@ -299,10 +299,6 @@ function BetaCalculation({ onClose, onMenuChange }) {
           <div className="sidebar-item" onClick={() => onMenuChange('assets')}>
             Assets report
           </div>
-          
-          <div className="sidebar-item" onClick={() => onMenuChange('tool')}>
-            Analyst tool
-          </div>
 
           <div className="sidebar-item active">
             Beta Calculation

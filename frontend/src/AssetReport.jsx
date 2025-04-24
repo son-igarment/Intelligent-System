@@ -1,16 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 
 function AssetReport({ onClose, onMenuChange }) {
   const currentDate = "2025-03-28";
   
-  const assetData = [
-    { id: 1, name: "ABC", volume: 1000, curPrice: 20.000, cost: 19500.00, totalValue: 20000.00, profit: "+500.00", profitPercent: "+2.56%", weight: "10.00%" },
-    { id: 2, name: "BCD", volume: 2000, curPrice: 33.000, cost: 72000.00, totalValue: 66000.00, profit: "-6000.00", profitPercent: "-8.33%", weight: "33.00%" },
-    { id: 3, name: "EFG", volume: 1500, curPrice: 50.000, cost: 84000.00, totalValue: 75000.00, profit: "-9000.00", profitPercent: "-10.71%", weight: "37.50%" },
-    { id: 4, name: "Cash", volume: 1, curPrice: 39000.00, cost: 39000.00, totalValue: 39000.00, profit: "+0.00", profitPercent: "+0.00%", weight: "19.50%" },
-    { id: 5, name: "NAV", volume: 1, curPrice: 200000.00, cost: 214500.00, totalValue: 200000.00, profit: "-14500.00", profitPercent: "-6.76%", weight: "100.00%" }
-  ];
+  const [assetData, setAssetData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchAssetData();
+  }, []);
+
+  const fetchAssetData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await fetch('http://localhost:5000/api/stock-data-with-beta');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setAssetData(data);
+      } else {
+        setError('Failed to fetch asset data: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      setError('Error: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="dashboard-container">
@@ -33,10 +53,6 @@ function AssetReport({ onClose, onMenuChange }) {
           
           <div className="sidebar-item active">
             Assets report
-          </div>
-          
-          <div className="sidebar-item" onClick={() => onMenuChange('tool')}>
-            Analyst tool
           </div>
           
           <div className="sidebar-item" onClick={() => onMenuChange('beta')}>
@@ -64,37 +80,38 @@ function AssetReport({ onClose, onMenuChange }) {
               </div>
             </div>
             
+            {loading && <div className="loading-indicator">Loading asset data...</div>}
+            {error && <div className="error-message">{error}</div>}
+            
             <div className="stock-table-container">
               <table className="stock-table">
                 <thead>
                   <tr>
-                    <th>Stock Name</th>
-                    <th>Volume</th>
-                    <th>Cur.Price</th>
-                    <th>Cost</th>
-                    <th>Cur.Price</th>
+                    <th>Market Code</th>
+                    <th>Ticker</th>
+                    <th>Close Price</th>
+                    <th>Total Volume</th>
+                    <th>Open Price</th>
+                    <th>Current Price</th>
                     <th>Profit / Loss</th>
                     <th>Profit / Loss (%)</th>
-                    <th>Weight</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {assetData.map(asset => (
-                    <tr key={asset.id}>
-                      <td className={asset.name === "NAV" ? "highlight" : asset.name === "Cash" ? "yellow-highlight" : ""}>
-                        {asset.name}
+                  {assetData.map((asset, index) => (
+                    <tr key={index}>
+                      <td>{asset.MarketCode}</td>
+                      <td>{asset.Ticker}</td>
+                      <td>{asset.ClosePrice.toFixed(2)}</td>
+                      <td>{asset.TotalVolume.toFixed(0)}</td>
+                      <td>{asset.OpenPrice.toFixed(2)}</td>
+                      <td>{asset.CurrentPrice.toFixed(2)}</td>
+                      <td className={asset.ProfitLoss >= 0 ? 'profit' : 'loss'}>
+                        {asset.ProfitLoss.toFixed(2)}
                       </td>
-                      <td>{asset.volume}</td>
-                      <td>{asset.curPrice}</td>
-                      <td>{asset.cost}</td>
-                      <td>{asset.totalValue}</td>
-                      <td className={asset.profit.startsWith('+') ? 'profit' : 'loss'}>
-                        {asset.profit}
+                      <td className={asset.ProfitLossPercent >= 0 ? 'profit' : 'loss'}>
+                        {asset.ProfitLossPercent.toFixed(2)}%
                       </td>
-                      <td className={asset.profitPercent.startsWith('+') ? 'profit' : 'loss'}>
-                        {asset.profitPercent}
-                      </td>
-                      <td>{asset.weight}</td>
                     </tr>
                   ))}
                 </tbody>
