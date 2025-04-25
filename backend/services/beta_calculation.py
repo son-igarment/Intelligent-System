@@ -42,7 +42,7 @@ def calculate_beta(stock_returns, market_returns):
     
     return beta
 
-def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_predict=5):
+def get_beta_for_stock(stock_data, market_data, stock_code, days_to_predict=5):
     """
     Calculate Beta for a specific stock on a given date (or latest available)
     
@@ -56,14 +56,7 @@ def get_beta_for_stock(stock_data, market_data, stock_code, date=None, days_to_p
     Returns:
     dict: Beta coefficient and related metrics
     """
-    if date is None:
-        # Use the latest date in the dataset
-        date = max(stock_data['TradeDate'].values, key=lambda d: datetime.strptime(d, '%Y-%m-%d'))
-
-    else:
-        # Convert string date to datetime if needed
-        if isinstance(date, str):
-            date = datetime.strptime(date, '%Y-%m-%d').date()
+    date = max(stock_data['TradeDate'].values, key=lambda d: datetime.strptime(d, '%Y-%m-%d'))
     
     # If no data found for the stock code, return error
     if stock_data.empty:
@@ -265,4 +258,4 @@ def get_beta_portfolio(stock_data, market_data, portfolio, date=None, days_to_pr
         'component_betas': component_betas,
         'interpretation': interpret_beta(portfolio_beta),
         'prediction_horizon': days_to_predict
-    } 
+    }

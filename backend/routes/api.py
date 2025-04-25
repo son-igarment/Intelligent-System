@@ -303,29 +303,12 @@ def calculate_beta_and_train_svm():
 def get_beta(date, market_code, ticker, days_to_predict = 5):
     try:
         # Retrieve stock data from MongoDB
-        if market_code:
-            stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code}, {'_id': 0}))
-        else:
-            stock_data = list(current_app.db.stock_data.find({}, {'_id': 0}))
+        stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code, 'Ticker': ticker}, {'_id': 0}))
         if not stock_data:
             return jsonify({"error": "No stock data available"}), 404
 
         # Convert to DataFrame
         stock_df = pd.DataFrame(stock_data)
-
-        # Filter stock data based on both MarketCode and Ticker if provided
-        if ticker:
-            filtered_stock_df = stock_df[stock_df['Ticker'] == ticker]
-            if filtered_stock_df.empty:
-                return jsonify({"error": f"No data found for Ticker={ticker}"}), 404
-            stock_df = filtered_stock_df
-
-        # Get market index data from market_index_data collection
-        if market_code:
-            mc = "HSX" if market_code == "HOSE" else market_code
-            market_data = list(current_app.db.market_index_data.find({'MarketCode': mc}, {'_id': 0}))
-        else:
-            market_data = list(current_app.db.market_index_data.find({}, {'_id': 0}))
 
         # Normalize index codes - handle different naming conventions
         # Map HSX or HOSE to VNIndex, HNX to HNXIndex
@@ -336,128 +319,47 @@ def get_beta(date, market_code, ticker, days_to_predict = 5):
             'UPCOM': 'UpcomIndex',
             'Upcom': 'UpcomIndex',
         }
-        if market_data:
-            # Convert to DataFrame
-            market_df = pd.DataFrame(market_data)
 
-            if market_code:
-                filtered_market_df = market_df[market_df['IndexCode'] == code_mapping[market_code]]
-                if filtered_market_df.empty:
-                    return jsonify({"error": f"No data found for IndexCode={code_mapping[market_code]}"}), 404
-                market_df = filtered_market_df
+        # Get market index data from market_index_data collection
+        mc = "HSX" if market_code == "HOSE" else market_code
+        market_data = list(current_app.db.market_index_data.find({'MarketCode': mc, 'IndexCode': code_mapping[market_code]}, {'_id': 0}))
 
-            if 'IndexCode' in market_df.columns:
-                market_df['IndexCode'] = market_df['IndexCode'].apply(
-                    lambda x: code_mapping.get(x, x) if isinstance(x, str) else x
-                )
+        # Convert to DataFrame
+        market_df = pd.DataFrame(market_data)
 
-            # Make sure we use the right column names
-            # If the market data has different column names, map them to expected names
-            if 'TradeDate' in market_df.columns and 'Date' not in market_df.columns:
-                market_df['Date'] = market_df['TradeDate']
-
-            if 'CloseIndex' in market_df.columns and 'Close' not in market_df.columns:
-                market_df['Close'] = market_df['CloseIndex']
-        else:
-            # No market_index_data, try to use VNIndex from stock_data as fallback
-            market_df = stock_df[stock_df['IndexCode'] == 'VNIndex'].copy()
-
-            if market_df.empty:
-                # Also try with alternate names
-                for alt_code in ['HOSE', 'HSX']:
-                    market_df = stock_df[stock_df['IndexCode'] == alt_code].copy()
-                    if not market_df.empty:
-                        # Rename the IndexCode to VNIndex for consistency
-                        market_df['IndexCode'] = 'VNIndex'
-                        break
-
-            if market_df.empty:
-                return jsonify({"error": "No market index data available. Please import VNIndex data first."}), 404
+        if 'IndexCode' in market_df.columns:
+            market_df['IndexCode'] = market_df['IndexCode'].apply(
+                lambda x: code_mapping.get(x, x) if isinstance(x, str) else x
+            )
 
         # Determine what we're calculating beta for
         calculate_for = None
         if ticker and market_code:
             calculate_for = f"{market_code}:{ticker}"
 
-        # Calculate beta
-        if ticker and market_code:
-            # Calculate beta for a specific stock with days_to_predict parameter
-            result = get_beta_for_stock(stock_df, market_df, calculate_for, date, days_to_predict)
+        # Calculate beta for a specific stock with days_to_predict parameter
+        result = get_beta_for_stock(stock_df, market_df, calculate_for, days_to_predict)
 
-            # Store the result in MongoDB
-            if result['beta'] is not None:
-                beta_record = {
-                    'stock_code': result['stock_code'],
-                    'market_code': market_code,
-                    'ticker': ticker,
-                    'date': result['date'],
-                    'beta': result['beta'],
-                    'calculation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    'interpretation': result['interpretation'],
-                    'prediction_horizon': days_to_predict
-                }
-                insert_result = current_app.db.beta_values.insert_one(beta_record)
-                result['_id'] = str(insert_result.inserted_id)
+        # Store the result in MongoDB
+        if result['beta'] is not None:
+            beta_record = {
+                'stock_code': result['stock_code'],
+                'market_code': market_code,
+                'ticker': ticker,
+                'date': result['date'],
+                'beta': result['beta'],
+                'calculation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'interpretation': result['interpretation'],
+                'prediction_horizon': days_to_predict
+            }
+            # Remove existing beta record if it exists
+            current_app.db.beta_values.delete_one({'stock_code': calculate_for, 'market_code': market_code, 'ticker': ticker})
 
-            return jsonify(result)
-        else:
-            # Calculate beta for all stocks with days_to_predict parameter
-            results = []
+            # Insert new beta record
+            insert_result = current_app.db.beta_values.insert_one(beta_record)
+            result['_id'] = str(insert_result.inserted_id)
 
-            # If we're calculating for all, we should consider unique combinations of MarketCode and Ticker
-            if 'MarketCode' in stock_df.columns and 'Ticker' in stock_df.columns:
-                # Get unique combinations of MarketCode and Ticker
-                combined_codes = stock_df.groupby(['MarketCode', 'Ticker']).size().reset_index()
-                for _, row in combined_codes.iterrows():
-                    market = row['MarketCode']
-                    tick = row['Ticker']
-                    code_name = f"{market}:{tick}"
-
-                    # Filter stock data for this specific combination
-                    specific_df = stock_df[(stock_df['MarketCode'] == market) & (stock_df['Ticker'] == tick)]
-                    mc = "HSX" if market == "HOSE" else market
-                    mc = "Upcom" if market == "UPCOM" else market
-                    specific_market_df = market_df[
-                        (stock_df['MarketCode'] == mc) & (market_df['IndexCode'] == code_mapping[market])]
-
-                    if not specific_df.empty:
-                        beta_result = get_beta_for_stock(specific_df, specific_market_df, code_name, date,
-                                                         days_to_predict)
-                        beta_result['market_code'] = market
-                        beta_result['ticker'] = tick
-                        results.append(beta_result)
-            else:
-                # Fallback to old method if columns are not available
-                for code in stock_df['MarketCode'].unique():
-                    beta_result = get_beta_for_stock(stock_df, market_df, code, date, days_to_predict)
-                    results.append(beta_result)
-
-            results_df = pd.DataFrame(results)
-
-            # Store results in MongoDB
-            beta_records = []
-            inserted_ids = []
-            for _, row in results_df.iterrows():
-                if row['beta'] is not None:
-                    beta_record = {
-                        'stock_code': row['stock_code'],
-                        'market_code': row.get('market_code'),
-                        'ticker': row.get('ticker'),
-                        'date': row['date'],
-                        'beta': float(row['beta']),
-                        'calculation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        'interpretation': row['interpretation'],
-                        'prediction_horizon': days_to_predict
-                    }
-                    beta_records.append(beta_record)
-
-            if beta_records:
-                result = current_app.db.beta_values.insert_many(beta_records)
-                for i, id in enumerate(result.inserted_ids):
-                    if i < len(results):
-                        results[i]['_id'] = str(id)
-
-            return jsonify(results)
+        return jsonify(result)
 
     except Exception as e:
         print(f"Error calculating beta: {str(e)}")
@@ -475,6 +377,9 @@ def calculate_beta():
     market_code = request_data.get('market_code')  # Market code (HNX, HOSE)
     ticker = request_data.get('ticker')  # Stock ticker (VLA, MCF, etc.)
     days_to_predict = request_data.get('days_to_predict', 5)  # Default to 5 days
+
+    if not market_code or not ticker:
+        return jsonify({"error": "Market code and ticker are required"}), 400
 
     # Retrieve stock data from MongoDB
     return get_beta(date, market_code, ticker, days_to_predict)
@@ -609,50 +514,44 @@ def svm_analysis():
     try:
         # Get parameters from request
         request_data = request.json or {}
-        days_to_predict = request_data.get('days_to_predict', 5)
-        use_beta = request_data.get('use_beta', True)
+        days_to_predict = request_data.get('days_to_predict', 5)  # Default to 5 days
         market_code = request_data.get('market_code')
         ticker = request_data.get('ticker')
 
         if not market_code or not ticker:
             return jsonify({"error": "Market code and ticker are required"}), 400
-
-
         
         # Get stock data from MongoDB
-        stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code}, {'_id': 0}))
+        stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code, 'Ticker': ticker}, {'_id': 0}))
         if not stock_data:
             return jsonify({"error": "No stock data available for analysis"}), 404
         
         # Convert to DataFrame
         stock_df = pd.DataFrame(stock_data)
-        specific_df = stock_df[stock_df['Ticker'] == ticker]
-        
+
         # Get beta values if requested
         beta_values = None
-        if use_beta:
-            # Lấy giá trị beta phù hợp với khoảng thời gian dự đoán
+
+        # Lấy giá trị beta phù hợp với khoảng thời gian dự đoán
+        beta_data = list(current_app.db.beta_values.find(
+            {'market_code': market_code, 'ticker': ticker},
+            {'_id': 0}
+        ))
+
+        # Nếu không có beta values phù hợp với khoảng thời gian, tính toán mới
+        if not beta_data:
+            get_beta(None, market_code, ticker, days_to_predict)
             beta_data = list(current_app.db.beta_values.find(
                 {'prediction_horizon': days_to_predict},
                 {'_id': 0}
             ))
-            
-            # Nếu không có beta values phù hợp với khoảng thời gian, tính toán mới
-            if not beta_data:
-                get_beta(None, market_code, ticker, days_to_predict)
-                beta_data = list(current_app.db.beta_values.find(
-                    {'prediction_horizon': days_to_predict},
-                    {'_id': 0}
-                ))
-            
-            # Chuyển đổi thành DataFrame
-            if beta_data:
-                beta_values = pd.DataFrame(beta_data)
 
-        specific_beta_values = beta_values[(beta_values['market_code'] == market_code) & (beta_values['ticker'] == ticker)]
-        
+        # Chuyển đổi thành DataFrame
+        if beta_data:
+            beta_values = pd.DataFrame(beta_data)
+
         # Perform SVM analysis with market_code and ticker
-        analysis_result = analyze_stocks_with_svm(specific_df, specific_beta_values, days_to_predict)
+        analysis_result = analyze_stocks_with_svm(stock_df, beta_values, days_to_predict)
         
         if not analysis_result["success"]:
             return jsonify({"error": analysis_result["error"]}), 400
@@ -663,7 +562,6 @@ def svm_analysis():
             "days_to_predict": days_to_predict,
             "accuracy": analysis_result["model_metrics"]["accuracy"],
             "predictions": analysis_result["predictions"],
-            "use_beta": use_beta,
             "market_code": market_code,
             "ticker": ticker
         }
