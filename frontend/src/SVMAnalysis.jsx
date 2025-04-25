@@ -20,7 +20,8 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
       fontSize: '18px',
       fontWeight: 'bold',
       marginBottom: '15px',
-      textAlign: 'center'
+      textAlign: 'center',
+      color: '#000'
     },
     chartRow: {
       display: 'flex',
@@ -53,7 +54,8 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontWeight: 'bold'
+      fontWeight: 'bold',
+      color: '#000'
     },
     legend: {
       marginTop: '20px',
@@ -64,12 +66,18 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
     legendItem: {
       display: 'flex',
       alignItems: 'center',
-      gap: '8px'
+      gap: '8px',
+      color: '#000'
     },
     legendColor: {
       width: '16px',
       height: '16px',
       borderRadius: '3px'
+    },
+    chartLabel: {
+      color: '#000',
+      fontSize: '12px',
+      fontWeight: 'bold'
     }
   };
 
@@ -122,7 +130,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
 
       <div style={styles.chartRow}>
         <div style={styles.pieContainer}>
-          <h5>Phân bố dự đoán</h5>
+          <h5 style={styles.chartLabel}>Phân bố dự đoán</h5>
           <div 
             style={{
               ...styles.pieChart,
@@ -149,7 +157,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
         </div>
 
         <div style={styles.pieContainer}>
-          <h5>Tin hiệu thị trường</h5>
+          <h5 style={styles.chartLabel}>Tin hiệu thị trường</h5>
           <div style={{
             fontSize: '72px',
             fontWeight: 'bold',
@@ -161,7 +169,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
             {distribution.buy.count > distribution.sell.count ? '↑' : 
              distribution.sell.count > distribution.buy.count ? '↓' : '→'}
           </div>
-          <div style={{textAlign: 'center', marginTop: '10px', fontWeight: 'bold'}}>
+          <div style={{textAlign: 'center', marginTop: '10px', fontWeight: 'bold', color: '#000'}}>
             {distribution.buy.count > distribution.sell.count ? 'TĂNG' : 
              distribution.sell.count > distribution.buy.count ? 'GIẢM' : 'ĐANG SIDEWAY'}
           </div>
@@ -170,7 +178,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
 
       {/* Weekly Prediction Chart */}
       <div style={{marginTop: '30px', border: '1px solid #ddd', borderRadius: '8px', padding: '15px'}}>
-        <h5 style={{textAlign: 'center', marginBottom: '15px'}}>Xác suất dự đoán theo tuần</h5>
+        <h5 style={{textAlign: 'center', marginBottom: '15px', color: '#000'}}>Xác suất dự đoán theo tuần</h5>
         <div style={{
           height: '200px',
           position: 'relative',
@@ -200,7 +208,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
                     left: 0,
                     top: 0,
                     fontSize: '11px',
-                    color: '#666'
+                    color: '#000'
                   }}>
                     {100 - i * 25}%
                   </span>
@@ -259,7 +267,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
             marginTop: '5px'
           }}>
             {['Hiện tại', 'Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4'].map((label, i) => (
-              <div key={i} style={{fontSize: '11px', color: '#666'}}>{label}</div>
+              <div key={i} style={{fontSize: '11px', color: '#000'}}>{label}</div>
             ))}
           </div>
         </div>
@@ -273,15 +281,15 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
         }}>
           <div style={{display: 'flex', alignItems: 'center'}}>
             <div style={{width: '15px', height: '15px', backgroundColor: '#00C853', marginRight: '5px', borderRadius: '50%'}}></div>
-            <span>Mua</span>
+            <span style={{color: '#000'}}>Mua</span>
           </div>
           <div style={{display: 'flex', alignItems: 'center'}}>
             <div style={{width: '15px', height: '15px', backgroundColor: '#FFC107', marginRight: '5px', borderRadius: '50%'}}></div>
-            <span>Giữ</span>
+            <span style={{color: '#000'}}>Giữ</span>
           </div>
           <div style={{display: 'flex', alignItems: 'center'}}>
             <div style={{width: '15px', height: '15px', backgroundColor: '#FF3D00', marginRight: '5px', borderRadius: '50%'}}></div>
-            <span>Bán</span>
+            <span style={{color: '#000'}}>Bán</span>
           </div>
         </div>
       </div>
@@ -289,7 +297,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
       {/* Price Trend Chart */}
       {predictions.length > 0 && predictions[0].price_trend && (
         <div style={{marginTop: '30px', border: '1px solid #ddd', borderRadius: '8px', padding: '15px'}}>
-          <h5 style={{textAlign: 'center', marginBottom: '15px'}}>Dự báo xu hướng giá</h5>
+          <h5 style={{textAlign: 'center', marginBottom: '15px', color: '#000'}}>Dự báo xu hướng giá</h5>
           <div style={{
             height: '200px',
             position: 'relative',
@@ -319,7 +327,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
                       left: 0,
                       top: 0,
                       fontSize: '11px',
-                      color: '#666'
+                      color: '#000'
                     }}>
                       {Math.round(Math.max(...predictions[0].price_trend) - (i * (Math.max(...predictions[0].price_trend) - Math.min(...predictions[0].price_trend)) / 4))}
                     </span>
@@ -365,7 +373,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
                 return (
                   <g key={idx}>
                     <circle cx={x} cy={y} r="5" fill="#4a6da7" />
-                    <text x={x} y={y-10} fontSize="11" textAnchor="middle" fill="#333">{price.toLocaleString()}</text>
+                    <text x={x} y={y-10} fontSize="11" textAnchor="middle" fill="#000">{price.toLocaleString()}</text>
                   </g>
                 );
               })}
@@ -379,7 +387,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
               marginTop: '5px'
             }}>
               {predictions[0].price_trend.map((_, idx) => (
-                <div key={idx} style={{fontSize: '11px', color: '#666'}}>
+                <div key={idx} style={{fontSize: '11px', color: '#000'}}>
                   {idx === 0 ? 'Hiện tại' : `Ngày ${idx}`}
                 </div>
               ))}
@@ -391,7 +399,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
             textAlign: 'center',
             fontSize: '13px',
             fontStyle: 'italic',
-            color: '#666'
+            color: '#000'
           }}>
             Dự báo xu hướng giá trong {predictions[0].price_trend.length - 1} ngày tới dựa trên mô hình SVM
           </div>
@@ -401,7 +409,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
       {/* Price Trend Chart - Simulated version */}
       {(!predictions.length || !predictions[0].price_trend) && (
         <div style={{marginTop: '30px', border: '1px solid #ddd', borderRadius: '8px', padding: '15px'}}>
-          <h5 style={{textAlign: 'center', marginBottom: '15px'}}>Dự báo xu hướng giá</h5>
+          <h5 style={{textAlign: 'center', marginBottom: '15px', color: '#000'}}>Dự báo xu hướng giá</h5>
           <div style={{
             height: '200px',
             position: 'relative',
@@ -431,7 +439,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
                       left: 0,
                       top: 0,
                       fontSize: '11px',
-                      color: '#666'
+                      color: '#000'
                     }}>
                       {115 - (i * 5)}
                     </span>
@@ -460,7 +468,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
                 return (
                   <g key={idx}>
                     <circle cx={x} cy={y} r="5" fill="#4a6da7" />
-                    <text x={x} y={y-10} fontSize="11" textAnchor="middle" fill="#333">{price.toLocaleString()}</text>
+                    <text x={x} y={y-10} fontSize="11" textAnchor="middle" fill="#000">{price.toLocaleString()}</text>
                   </g>
                 );
               })}
@@ -474,7 +482,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
               marginTop: '5px'
             }}>
               {['Hiện tại', 'Ngày 1', 'Ngày 2', 'Ngày 3', 'Ngày 4'].map((label, i) => (
-                <div key={i} style={{fontSize: '11px', color: '#666'}}>{label}</div>
+                <div key={i} style={{fontSize: '11px', color: '#000'}}>{label}</div>
               ))}
             </div>
           </div>
@@ -484,12 +492,108 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
             textAlign: 'center',
             fontSize: '13px',
             fontStyle: 'italic',
-            color: '#666'
+            color: '#000'
           }}>
             Dự báo xu hướng giá trong 4 ngày tới dựa trên mô hình SVM
           </div>
         </div>
       )}
+
+      {/* Histogram Chart */}
+      <div style={{marginTop: '30px', border: '1px solid #ddd', borderRadius: '8px', padding: '15px'}}>
+        <h5 style={{textAlign: 'center', marginBottom: '15px', color: '#000'}}>Phân phối dữ liệu</h5>
+        <div style={{
+          height: '250px',
+          position: 'relative',
+          padding: '10px 0'
+        }}>
+          {/* Y-axis */}
+          <div style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 30,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            pointerEvents: 'none'
+          }}>
+            {[0, 1, 2, 3, 4, 5].map(i => (
+              <div key={i} style={{
+                borderBottom: i < 5 ? '1px dashed #ddd' : 'none',
+                height: '20%',
+                position: 'relative'
+              }}>
+                {i < 5 && (
+                  <span style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    fontSize: '11px',
+                    color: '#000'
+                  }}>
+                    {100 - i * 20}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+          
+          {/* Histogram */}
+          <svg width="100%" height="100%" style={{paddingLeft: '30px', paddingBottom: '20px'}}>
+            {/* X and Y axis */}
+            <line x1="0" y1="200" x2="400" y2="200" stroke="#000" strokeWidth="1" />
+            <line x1="0" y1="0" x2="0" y2="200" stroke="#000" strokeWidth="1" />
+            
+            {/* Histogram bars */}
+            <rect x="20" y="197" width="10" height="3" fill="#1976D2" />
+            <rect x="35" y="190" width="10" height="10" fill="#1976D2" />
+            <rect x="50" y="180" width="10" height="20" fill="#1976D2" />
+            <rect x="65" y="165" width="10" height="35" fill="#1976D2" />
+            <rect x="80" y="145" width="10" height="55" fill="#1976D2" />
+            <rect x="95" y="120" width="10" height="80" fill="#1976D2" />
+            <rect x="110" y="100" width="10" height="100" fill="#1976D2" />
+            <rect x="125" y="75" width="10" height="125" fill="#1976D2" />
+            <rect x="140" y="60" width="10" height="140" fill="#1976D2" />
+            <rect x="155" y="40" width="10" height="160" fill="#1976D2" />
+            <rect x="170" y="20" width="10" height="180" fill="#1976D2" />
+            <rect x="185" y="0" width="10" height="200" fill="#1976D2" />
+            <rect x="200" y="15" width="10" height="185" fill="#1976D2" />
+            <rect x="215" y="35" width="10" height="165" fill="#1976D2" />
+            <rect x="230" y="55" width="10" height="145" fill="#1976D2" />
+            <rect x="245" y="80" width="10" height="120" fill="#1976D2" />
+            <rect x="260" y="105" width="10" height="95" fill="#1976D2" />
+            <rect x="275" y="130" width="10" height="70" fill="#1976D2" />
+            <rect x="290" y="155" width="10" height="45" fill="#1976D2" />
+            <rect x="305" y="175" width="10" height="25" fill="#1976D2" />
+            <rect x="320" y="190" width="10" height="10" fill="#1976D2" />
+            <rect x="335" y="197" width="10" height="3" fill="#1976D2" />
+          </svg>
+          
+          {/* X-axis labels */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            padding: '0 30px',
+            marginTop: '5px'
+          }}>
+            {['-3', '-2', '-1', '0', '1', '2', '3', '4'].map((label, i) => (
+              <div key={i} style={{fontSize: '11px', color: '#000'}}>{label}</div>
+            ))}
+          </div>
+        </div>
+        
+        <div style={{
+          marginTop: '15px',
+          textAlign: 'center',
+          fontSize: '13px',
+          fontStyle: 'italic',
+          color: '#000'
+        }}>
+          Phân phối dữ liệu chuẩn hóa cho phân tích SVM
+        </div>
+      </div>
     </div>
   );
 };
@@ -765,6 +869,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
                       value={selectedTicker} 
                       onChange={(e) => setSelectedTicker(e.target.value)}
                       className="ticker-select"
+                      disabled={!selectedStock}
                     >
                       <option value="">-- Chọn ticker * --</option>
                       {filteredTickers.map(ticker => (

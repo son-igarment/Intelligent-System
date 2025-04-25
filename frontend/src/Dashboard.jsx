@@ -141,11 +141,11 @@ function Dashboard({ onClose }) {
         <div className="dashboard-main">
           <div className="report-container">
             <div className="report-header">
-              <h2 className="report-title">Daily Investment Report</h2>
+              <h2 className="report-title">DAILY INVESTMENT REPORT</h2>
               
               <div className="report-dates">
-                <div>Report date: <strong>{currentDate}</strong>.</div>
-                <div>Lastest update date: <strong>{currentDate}</strong>.</div>
+                <div>Report date: <strong>{currentDate}</strong></div>
+                <div>Lastest update date: <strong>{currentDate}</strong></div>
               </div>
               
               {/* Filter Controls */}

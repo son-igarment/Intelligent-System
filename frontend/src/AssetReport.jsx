@@ -99,11 +99,11 @@ function AssetReport({ onClose, onMenuChange }) {
         <div className="dashboard-main">
           <div className="report-container">
             <div className="report-header">
-              <h2 className="report-title">Daily Net Value Asset</h2>
+              <h2 className="report-title">DAILY NET VALUE ASSET</h2>
               
               <div className="report-dates">
-                <div>Report date: <strong>{currentDate}</strong>.</div>
-                <div>Lastest update date: <strong>{currentDate}</strong>.</div>
+                <div>Report date: <strong>{currentDate}</strong></div>
+                <div>Lastest update date: <strong>{currentDate}</strong></div>
               </div>
               
               {/* Filter Controls */}

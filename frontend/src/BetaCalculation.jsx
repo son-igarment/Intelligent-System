@@ -369,13 +369,7 @@ function BetaCalculation({ onClose, onMenuChange }) {
                   </div>
                   
                   <div className="option-group">
-                    <button 
-                      className="calculate-all-btn" 
-                      onClick={calculateAllBetas}
-                      disabled={loading}
-                    >
-                      Tính Beta cho tất cả các mã
-                    </button>
+                  
                   </div>                    
                 </div>
                                      

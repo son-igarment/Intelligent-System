@@ -3,7 +3,7 @@ import Login from './Login';
 import Research from './Research';
 import './App.css';
 
-function FundManagement({ onClose }) {
+function FundManagement() {
   const [showLogin, setShowLogin] = useState(false);
   const [showResearch, setShowResearch] = useState(false);
   
@@ -35,7 +35,6 @@ function FundManagement({ onClose }) {
     <div className="platform-container">
       <div className="platform-header">
         <span>Fund management iPlatform</span>
-        <button className="close-btn" onClick={onClose}>✕</button>
       </div>
       
       <div className="platform-content">

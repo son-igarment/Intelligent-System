@@ -331,20 +331,7 @@ function DataImport({ onClose, onMenuChange }) {
                       id="csv-input"
                     />
                     <label htmlFor="csv-input" className="file-label">Chọn file CSV</label>
-                  </div>
-                  
-                  <div className="import-option">
-                    <h4>Nhập file Excel</h4>
-                    <input 
-                      type="file" 
-                      accept=".xlsx, .xls" 
-                      onChange={handleExcelImport}
-                      className="file-input"
-                      id="excel-input"
-                    />
-                    <label htmlFor="excel-input" className="file-label">Chọn file Excel</label>
-                  </div>
-
+                  </div>              
                   <div className="import-option">
                     <h4>Nhập dữ liệu VNIndex</h4>
                     <input 

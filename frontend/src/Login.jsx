@@ -98,7 +98,7 @@ function Login({ onGoBack }) {
             
             <div className="login-buttons">
               <button className="login-btn" onClick={handleLogin}>Login</button>
-              <button className="go-back-btn" onClick={onGoBack}>Go Back</button>
+              <button className="go-back-btn" onClick={onGoBack}>Exit</button>
             </div>
           </div>
         </div>
