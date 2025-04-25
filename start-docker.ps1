@@ -5,7 +5,7 @@ docker-compose up -d
 
 Write-Host "`nContainers started successfully!" -ForegroundColor Green
 Write-Host "MongoDB: mongodb://localhost:27017/intelligent_system_db"
-Write-Host "Backend API: http://localhost:5000"
+Write-Host "Backend API: http://localhost:5001"
 Write-Host "Frontend: http://localhost:5175"
 
 Write-Host "`nUse the following command to stop the containers:" -ForegroundColor Yellow

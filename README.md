@@ -40,7 +40,7 @@ The easiest way to run the application is using Docker:
 
 3. The application will be available at:
    - Frontend: http://localhost:5175
-   - Backend API: http://localhost:5000
+   - Backend API: http://localhost:5001
    - MongoDB: mongodb://localhost:27017/intelligent_system_db
 
 4. To stop the containers:

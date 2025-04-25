@@ -300,7 +300,7 @@ def calculate_beta_and_train_svm():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-def get_beta(date, market_code, ticker, days_to_predict = 5):
+def get_beta(market_code, ticker, days_to_predict = 5):
     try:
         # Retrieve stock data from MongoDB
         stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code, 'Ticker': ticker}, {'_id': 0}))
@@ -373,7 +373,6 @@ def calculate_beta():
 
     # Get parameters from the request
     request_data = request.json or {}
-    date = request_data.get('date')  # Optional date parameter
     market_code = request_data.get('market_code')  # Market code (HNX, HOSE)
     ticker = request_data.get('ticker')  # Stock ticker (VLA, MCF, etc.)
     days_to_predict = request_data.get('days_to_predict', 5)  # Default to 5 days
@@ -382,7 +381,7 @@ def calculate_beta():
         return jsonify({"error": "Market code and ticker are required"}), 400
 
     # Retrieve stock data from MongoDB
-    return get_beta(date, market_code, ticker, days_to_predict)
+    return get_beta(market_code, ticker, days_to_predict)
 
 
 # Endpoint to get Beta for a portfolio
@@ -540,7 +539,7 @@ def svm_analysis():
 
         # Nếu không có beta values phù hợp với khoảng thời gian, tính toán mới
         if not beta_data:
-            get_beta(None, market_code, ticker, days_to_predict)
+            get_beta(market_code, ticker, days_to_predict)
             beta_data = list(current_app.db.beta_values.find(
                 {'prediction_horizon': days_to_predict},
                 {'_id': 0}

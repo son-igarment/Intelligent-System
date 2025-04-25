@@ -19,7 +19,7 @@ function MarketIndexView({ onClose, onMenuChange }) {
       setLoading(true);
       setError("");
       
-      const response = await fetch('http://localhost:5000/api/market-index-data');
+      const response = await fetch('http://localhost:5001/api/market-index-data');
       const data = await response.json();
       
       if (response.ok && data.length > 0) {

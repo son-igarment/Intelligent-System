@@ -161,7 +161,7 @@ function DataImport({ onClose, onMenuChange }) {
     try {
       setLoading(true);
 
-      const response = await fetch('http://localhost:5000/api/import-data', {
+      const response = await fetch('http://localhost:5001/api/import-data', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -189,7 +189,7 @@ function DataImport({ onClose, onMenuChange }) {
     try {
       setLoading(true);
 
-      const response = await fetch('http://localhost:5000/api/import-market-index', {
+      const response = await fetch('http://localhost:5001/api/import-market-index', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -218,7 +218,7 @@ function DataImport({ onClose, onMenuChange }) {
       setLoading(true);
       setError("");
       
-      const response = await fetch('http://localhost:5000/api/stock-data');
+      const response = await fetch('http://localhost:5001/api/stock-data');
       const data = await response.json();
       
       if (response.ok && data.length > 0) {
@@ -240,7 +240,7 @@ function DataImport({ onClose, onMenuChange }) {
       setLoading(true);
       setError("");
       
-      const response = await fetch('http://localhost:5000/api/calculate', {
+      const response = await fetch('http://localhost:5001/api/calculate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

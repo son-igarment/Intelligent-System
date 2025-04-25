@@ -536,7 +536,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
       setLoading(true);
       setError('');
       
-      const response = await fetch('http://localhost:5000/api/stock-data');
+      const response = await fetch('http://localhost:5001/api/stock-data');
       const data = await response.json();
       
       if (response.ok) {
@@ -577,8 +577,8 @@ function SVMAnalysis({ onClose, onMenuChange }) {
       
       // Add query parameters to URL if present
       const url = queryParams.toString() 
-        ? `http://localhost:5000/api/latest-svm-analysis?${queryParams.toString()}`
-        : 'http://localhost:5000/api/latest-svm-analysis';
+        ? `http://localhost:5001/api/latest-svm-analysis?${queryParams.toString()}`
+        : 'http://localhost:5001/api/latest-svm-analysis';
       
       const response = await fetch(url);
       
@@ -617,7 +617,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
         ticker: selectedTicker
       };
       
-      const response = await fetch('http://localhost:5000/api/svm-analysis', {
+      const response = await fetch('http://localhost:5001/api/svm-analysis', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

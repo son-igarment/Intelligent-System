@@ -19,7 +19,7 @@ function AssetReport({ onClose, onMenuChange }) {
       setLoading(true);
       setError('');
       
-      const response = await fetch('http://localhost:5000/api/stock-data-with-beta');
+      const response = await fetch('http://localhost:5001/api/stock-data-with-beta');
       const data = await response.json();
       
       if (response.ok) {
@@ -44,7 +44,7 @@ function AssetReport({ onClose, onMenuChange }) {
     }
     
     // Filter the data by selected market code
-    fetch('http://localhost:5000/api/stock-data-with-beta')
+    fetch('http://localhost:5001/api/stock-data-with-beta')
       .then(response => response.json())
       .then(data => {
         if (data) {
