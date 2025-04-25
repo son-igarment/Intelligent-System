@@ -1,385 +1,375 @@
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
-def calculate_returns(df, price_col='ClosePrice'):
+def prepare_features(stock_data, beta_values, days_to_predict=5):
     """
-    Calculate daily returns for a given price series
-    
-    Parameters:
-    df (DataFrame): DataFrame containing price data
-    price_col (str): Column name for price data
-    
-    Returns:
-    Series: Daily returns
-    """
-    # Convert to float to ensure proper calculation
-    prices = df[price_col].astype(float)
-    
-    # Calculate returns: Ri = (P1 - P0) / P0
-    # Note: In a real implementation, we would add dividends (D1) if available
-    returns = prices.pct_change()
-    
-    return returns
-
-def fit_market_model(stock_returns, market_returns):
-    """
-    Fit Market Model (Ri = αi + βiRm + ϵi) using linear regression
-    
-    Parameters:
-    stock_returns (Series): Returns of the stock
-    market_returns (Series): Returns of the market index
-    
-    Returns:
-    dict: Alpha, Beta, R-squared and other metrics
-    """
-    # Remove NaN values (usually from the pct_change calculation)
-    valid_data = pd.DataFrame({
-        'stock': stock_returns,
-        'market': market_returns
-    }).dropna()
-    
-    if len(valid_data) < 30:  # Need sufficient data points for meaningful regression
-        return None
-    
-    # Prepare X and y for linear regression
-    X = valid_data['market'].values.reshape(-1, 1)
-    y = valid_data['stock'].values
-    
-    # Fit linear regression model
-    model = LinearRegression()
-    model.fit(X, y)
-    
-    # Extract parameters
-    alpha = model.intercept_  # αi (Alpha)
-    beta = model.coef_[0]     # βi (Beta)
-    
-    # Make predictions
-    y_pred = model.predict(X)
-    
-    # Calculate metrics
-    r2 = r2_score(y, y_pred)
-    mse = mean_squared_error(y, y_pred)
-    
-    # Calculate residuals (ϵi = Ri - (αi + βiRm))
-    residuals = y - y_pred
-    
-    # Coefficient of determination
-    ss_total = np.sum((y - np.mean(y))**2)
-    ss_residual = np.sum(residuals**2)
-    r_squared = 1 - (ss_residual / ss_total)
-    
-    return {
-        'alpha': alpha,
-        'beta': beta,
-        'r_squared': r_squared,
-        'mse': mse,
-        'residuals': residuals
-    }
-
-def interpret_beta(beta):
-    """
-    Interpret the meaning of Beta value
-    
-    Parameters:
-    beta (float): Beta coefficient from market model
-    
-    Returns:
-    str: Interpretation of Beta
-    """
-    if beta is None:
-        return "Không thể xác định"
-    
-    if beta < 0:
-        return "Biến động ngược chiều với thị trường"
-    elif beta < 0.5:
-        return "Ít biến động hơn thị trường rất nhiều"
-    elif beta < 0.8:
-        return "Ít biến động hơn thị trường"
-    elif beta < 1.0:
-        return "Biến động gần với thị trường (ít hơn)"
-    elif beta == 1.0:
-        return "Biến động cùng với thị trường"
-    elif beta < 1.2:
-        return "Biến động gần với thị trường (nhiều hơn)"
-    elif beta < 1.5:
-        return "Biến động nhiều hơn thị trường"
-    else:
-        return "Biến động mạnh hơn thị trường rất nhiều"
-
-def interpret_alpha(alpha):
-    """
-    Interpret the meaning of Alpha value
-    
-    Parameters:
-    alpha (float): Alpha coefficient from market model
-    
-    Returns:
-    str: Interpretation of Alpha
-    """
-    if alpha is None:
-        return "Không thể xác định"
-    
-    if alpha > 0.01:
-        return "Hiệu suất vượt trội so với thị trường"
-    elif alpha > 0.001:
-        return "Hiệu suất nhỉnh hơn thị trường"
-    elif alpha > -0.001:
-        return "Hiệu suất tương đương thị trường"
-    elif alpha > -0.01:
-        return "Hiệu suất kém hơn thị trường một chút"
-    else:
-        return "Hiệu suất kém hơn thị trường đáng kể"
-
-def predict_future_returns(alpha, beta, future_market_returns):
-    """
-    Predict future stock returns based on Market Model
-    
-    Parameters:
-    alpha (float): Alpha coefficient from market model
-    beta (float): Beta coefficient from market model
-    future_market_returns (array): Expected future market returns
-    
-    Returns:
-    array: Predicted future stock returns
-    """
-    # Ri = αi + βiRm + ϵi
-    # For prediction, we ignore the error term (ϵi)
-    predicted_returns = alpha + beta * future_market_returns
-    
-    return predicted_returns
-
-def classify_prediction(returns, threshold=0.01):
-    """
-    Classify predicted returns into Buy/Hold/Sell signals
-    
-    Parameters:
-    returns (array-like): Predicted returns
-    threshold (float): Threshold for significant movement
-    
-    Returns:
-    int: Signal category (1 = Buy, 0 = Hold, -1 = Sell)
-    """
-    if returns > threshold:
-        return 1  # Buy
-    elif returns < -threshold:
-        return -1  # Sell
-    else:
-        return 0  # Hold
-
-def estimate_future_market_returns(market_data, days_ahead=5):
-    """
-    Estimate future market returns based on historical patterns
-    
-    Parameters:
-    market_data (DataFrame): Historical market data
-    days_ahead (int): Number of days to forecast
-    
-    Returns:
-    array: Estimated future market returns
-    """
-    # This is a simplified model
-    # In a real implementation, you might use more sophisticated forecasting techniques
-    
-    # Get recent market returns
-    market_returns = calculate_returns(market_data)
-    
-    # Use average of recent returns as the forecast
-    # We use the last 30 days as a simple forecast mechanism
-    recent_avg_return = market_returns.tail(30).mean()
-    
-    # Generate forecast for days_ahead
-    forecast = np.array([recent_avg_return] * days_ahead)
-    
-    return forecast
-
-def analyze_stocks_with_market_model(stock_data, market_data, days_to_predict=5):
-    """
-    Analyze stocks with Market Model to predict price movements
+    Prepare features for SVM analysis from stock data and beta values
     
     Parameters:
     stock_data (DataFrame): Historical stock data
-    market_data (DataFrame): Market index data (if None, will try to find it in stock_data)
+    beta_values (DataFrame): Beta values for the stocks
+    days_to_predict (int): Number of days to use for prediction horizon
+    
+    Returns:
+    DataFrame: Features and target variables for SVM
+    """
+    # Create a copy of the data
+    df = stock_data.copy()
+    
+    # Convert date strings to datetime
+    df['TradeDate'] = pd.to_datetime(df['TradeDate'])
+    
+    # Sort by date
+    df = df.sort_values(['MarketCode', 'Ticker', 'TradeDate'])
+    
+    # Group by stock code to process each stock individually
+    grouped = df.groupby(['MarketCode', 'Ticker'])
+    
+    # Initialize lists to store results
+    all_features = []
+    all_targets = []
+    all_stock_codes = []
+    all_dates = []
+    
+    # Điều chỉnh ngưỡng phần trăm dựa trên days_to_predict
+    if days_to_predict <= 2:
+        threshold_pct = 0.5  # Ngưỡng thấp hơn cho dự đoán ngắn hạn
+    else:
+        threshold_pct = 1.0  # Ngưỡng mặc định
+        
+    print(f"Using threshold of {threshold_pct}% for price movement classification with days_to_predict={days_to_predict}")
+    
+    for code, group in grouped:
+        # Skip if less than 10 data points
+        if len(group) < 10:
+            continue
+        
+        # Get beta value for this stock
+        stock_code = ':'.join(code)
+        beta_value = None
+        if beta_values is not None:
+            beta_row = beta_values[beta_values['stock_code'] == stock_code]
+            if not beta_row.empty:
+                beta_value = beta_row.iloc[0]['beta']
+        
+        # Calculate technical indicators
+        group = calculate_technical_indicators(group)
+        
+        # Drop rows with NaN (due to rolling calculations)
+        group = group.dropna()
+        
+        # Prepare features
+        for i in range(len(group) - days_to_predict):
+            # Current data point
+            current_data = group.iloc[i]
+            
+            # Features
+            features = [
+                current_data['ClosePrice'],         # Current price
+                current_data['rsi_14'],               # RSI
+                current_data['macd'],                 # MACD
+                current_data['macd_signal'],          # MACD Signal
+                current_data['upper_band'],           # Bollinger Upper
+                current_data['lower_band'],           # Bollinger Lower
+                current_data['obv'],                  # On-Balance Volume
+                current_data['atr_14'],               # Average True Range
+                current_data['volatility_20'],        # Volatility
+            ]
+            
+            # Add beta as a feature if available
+            if beta_value is not None:
+                features.append(beta_value)
+            
+            # Target: Will the price go up in the next 'days_to_predict' days?
+            future_price = float(group.iloc[i + days_to_predict]['ClosePrice'])
+            current_price = float(current_data['ClosePrice'])
+            
+            # Classify as 1 (up), 0 (neutral), -1 (down) with adjusted thresholds
+            percent_change = (future_price - current_price) / current_price * 100
+            
+            if percent_change > threshold_pct:  # Up more than threshold_pct
+                target = 1
+            elif percent_change < -threshold_pct:  # Down more than threshold_pct
+                target = -1
+            else:  # Between -threshold_pct and threshold_pct
+                target = 0
+            
+            all_features.append(features)
+            all_targets.append(target)
+            all_stock_codes.append(stock_code)
+            all_dates.append(current_data['TradeDate'])
+    
+    # Convert lists to arrays
+    X = np.array(all_features)
+    y = np.array(all_targets)
+    
+    return X, y, all_stock_codes, all_dates
+
+def calculate_technical_indicators(df):
+    """Calculate various technical indicators for the dataframe"""
+    # Price and volume data
+    df = df.copy()
+    
+    # RSI (Relative Strength Index)
+    delta = df['ClosePrice'].astype(float).diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df['rsi_14'] = 100 - (100 / (1 + rs))
+    
+    # MACD (Moving Average Convergence Divergence)
+    exp1 = df['ClosePrice'].ewm(span=12, adjust=False).mean()
+    exp2 = df['ClosePrice'].ewm(span=26, adjust=False).mean()
+    df['macd'] = exp1 - exp2
+    df['macd_signal'] = df['macd'].ewm(span=9, adjust=False).mean()
+    
+    # Bollinger Bands
+    df['20sma'] = df['ClosePrice'].rolling(window=20).mean()
+    df['volatility_20'] = df['ClosePrice'].rolling(window=20).std()
+    df['upper_band'] = df['20sma'] + (df['volatility_20'] * 2)
+    df['lower_band'] = df['20sma'] - (df['volatility_20'] * 2)
+    
+    # OBV (On-Balance Volume)
+    df['daily_ret'] = df['ClosePrice'].astype(float).pct_change()
+    df['direction'] = np.where(df['daily_ret'] > 0, 1, -1)
+    df['direction'][df['daily_ret'] == 0] = 0
+    df['obv'] = (pd.to_numeric(df['TotalVolume']) * df['direction']).cumsum()
+    
+    # ATR (Average True Range)
+    df['high_low'] = df['HighestPrice'].astype(float) - df['LowestPrice'].astype(float)
+    df['high_close'] = abs(df['HighestPrice'].astype(float) - df['ClosePrice'].astype(float).shift())
+    df['low_close'] = abs(df['LowestPrice'].astype(float) - df['ClosePrice'].astype(float).shift())
+    df['tr'] = df[['high_low', 'high_close', 'low_close']].max(axis=1)
+    df['atr_14'] = df['tr'].rolling(window=14).mean()
+    
+    return df
+
+def train_svm_model(X, y, days_to_predict=5):
+    """
+    Train an SVM model for stock prediction
+    
+    Parameters:
+    X (array): Feature matrix
+    y (array): Target vector
     days_to_predict (int): Number of days to predict ahead
     
     Returns:
-    dict: Result of Market Model analysis including predictions and metrics
+    tuple: (model, scaler, accuracy, report, confusion_matrix)
+    """
+    # Split the data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    # Scale the features
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    
+    # Kernels và tham số dựa vào khoảng thời gian dự đoán
+    kernels = ['linear', 'rbf', 'poly']
+    
+    # Điều chỉnh C based on prediction horizon
+    if days_to_predict <= 2:
+        # Khoảng thời gian ngắn cần một mô hình ít regularization hơn
+        C_values = [0.5, 1.0, 2.0]
+    else:
+        # Khoảng thời gian dài cần một mô hình với nhiều regularization hơn
+        C_values = [0.1, 1.0, 5.0]
+    
+    best_accuracy = 0
+    best_model = None
+    best_report = None
+    
+    for kernel in kernels:
+        for C in C_values:
+            model = SVC(kernel=kernel, C=C, gamma='scale', random_state=42)
+            model.fit(X_train_scaled, y_train)
+            
+            # Predict on test set
+            y_pred = model.predict(X_test_scaled)
+            
+            # Calculate accuracy
+            accuracy = accuracy_score(y_test, y_pred)
+            report = classification_report(y_test, y_pred, output_dict=True)
+            
+            # Save the best model
+            if accuracy > best_accuracy:
+                best_accuracy = accuracy
+                best_model = model
+                best_report = report
+    
+    # Get confusion matrix
+    y_pred = best_model.predict(X_test_scaled)
+    cm = confusion_matrix(y_test, y_pred)
+    
+    # Đảm bảo report có thể serializable
+    processed_report = {}
+    for key, value in best_report.items():
+        if isinstance(value, dict):
+            processed_report[key] = {}
+            for metric, metric_value in value.items():
+                if hasattr(metric_value, 'item') or hasattr(metric_value, 'tolist'):
+                    processed_report[key][metric] = float(metric_value)
+                else:
+                    processed_report[key][metric] = metric_value
+        else:
+            if hasattr(value, 'item') or hasattr(value, 'tolist'):
+                processed_report[key] = float(value)
+            else:
+                processed_report[key] = value
+    
+    # Chuyển confusion matrix thành list
+    cm_list = cm.tolist()
+    
+    # Đảm bảo accuracy là float
+    accuracy = float(best_accuracy)
+    
+    print(f"Trained SVM model for days_to_predict={days_to_predict} with accuracy: {accuracy:.4f}")
+    
+    return best_model, scaler, accuracy, processed_report, cm_list
+
+def predict_stock_movement(model, scaler, features):
+    """
+    Predict stock movement using trained SVM model
+    
+    Parameters:
+    model: Trained SVM model
+    scaler: Feature scaler
+    features (array): Features for prediction
+    
+    Returns:
+    int: Predicted movement class (-1, 0, 1)
+    """
+    # Scale features
+    features_scaled = scaler.transform([features])
+    
+    # Predict
+    prediction = model.predict(features_scaled)[0]
+    
+    return prediction
+
+def get_prediction_label(prediction):
+    """Convert prediction class to label"""
+    if prediction == 1:
+        return "Tăng giá", "strong_buy"
+    elif prediction == 0:
+        return "Đi ngang", "hold"
+    else:
+        return "Giảm giá", "strong_sell"
+
+def analyze_stocks_with_svm(stock_data, beta_values, days_to_predict=5):
+    """
+    Analyze stocks with SVM model to predict price movements
+    
+    Parameters:
+    stock_data (DataFrame): Historical stock data
+    beta_values (DataFrame): Beta values (optional)
+    days_to_predict (int): Number of days to predict ahead
+    market_code (str, optional): MarketCode to filter (e.g., "HOSE", "HNX")
+    ticker (str, optional): Ticker symbol to filter (e.g., "VLA", "MCF")
+    
+    Returns:
+    dict: Result of SVM analysis including predictions and metrics
     """
     try:
-        # Create a copy of the data
-        stocks_df = stock_data.copy()
+        # Filter the stock data if market_code or ticker is specified
+        filtered_data = stock_data.copy()
         
-        # Ensure date column is datetime
-        stocks_df['TradeDate'] = pd.to_datetime(stocks_df['TradeDate'])
+        # Prepare features
+        X, y, stock_codes, dates = prepare_features(filtered_data, beta_values, days_to_predict)
         
-        # Sort by date
-        stocks_df = stocks_df.sort_values(['MarketCode', 'Ticker', 'TradeDate'])
+        if len(X) == 0 or len(y) == 0:
+            return {
+                "success": False,
+                "error": "Insufficient data for analysis after filtering"
+            }
         
-        # Extract market data if not provided separately
-        if market_data is None or market_data.empty:
-            print("Market data not provided separately. Trying to find market index in stock data.")
-            market_indices = ['VNINDEX', 'VN-INDEX', 'VNIndex', 'HNXIndex', 'HNXINDEX']
-            
-            # Try to find market index data
-            market_df = None
-            for idx in market_indices:
-                if 'IndexCode' in stocks_df.columns:
-                    market_rows = stocks_df[stocks_df['IndexCode'] == idx]
-                    if not market_rows.empty:
-                        market_df = market_rows.copy()
-                        break
-                elif 'Ticker' in stocks_df.columns:
-                    # Also try to find it in Ticker column
-                    market_rows = stocks_df[stocks_df['Ticker'] == idx]
-                    if not market_rows.empty:
-                        market_df = market_rows.copy()
-                        break
-            
-            if market_df is None:
-                return {
-                    "success": False,
-                    "error": "Could not find market index data. Please provide it separately."
-                }
-        else:
-            market_df = market_data.copy()
-            
-        # Ensure market data has a date column
-        if 'TradeDate' not in market_df.columns and 'Date' in market_df.columns:
-            market_df['TradeDate'] = pd.to_datetime(market_df['Date'])
-        else:
-            market_df['TradeDate'] = pd.to_datetime(market_df['TradeDate'])
-            
-        # Calculate market returns
-        market_returns = calculate_returns(market_df, price_col='CloseIndex' if 'CloseIndex' in market_df.columns else 'ClosePrice')
-        market_returns_dict = dict(zip(market_df['TradeDate'], market_returns))
+        # Split into training and testing sets
+        X_train, X_test, y_train, y_test, train_indices, test_indices = train_test_split(
+            X, y, range(len(X)), test_size=0.2, random_state=42
+        )
         
-        # Estimate future market returns
-        future_market_returns = estimate_future_market_returns(market_df, days_ahead=days_to_predict)
+        # Standardize features
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
         
-        # Group by stock to analyze each one
-        grouped = stocks_df.groupby(['MarketCode', 'Ticker'])
+        # Train SVM model
+        model = SVC(kernel='rbf', C=1.0, gamma='scale', probability=True)
+        model.fit(X_train_scaled, y_train)
         
-        # Results container
+        # Evaluate model
+        y_pred = model.predict(X_test_scaled)
+        accuracy = accuracy_score(y_test, y_pred)
+        report = classification_report(y_test, y_pred, output_dict=True)
+        confusion = confusion_matrix(y_test, y_pred).tolist()
+        
+        # Get predictions for all samples
+        all_scaled = scaler.transform(X)
+        all_probas = model.predict_proba(all_scaled)
+        
+        # Prepare predictions
         predictions = []
-        overall_metrics = {
-            'avg_r_squared': 0,
-            'avg_beta': 0,
-            'avg_alpha': 0,
-            'stocks_analyzed': 0
-        }
         
-        for (market_code, ticker), group in grouped:
-            # Skip if too few data points
-            if len(group) < 60:  # Need sufficient historical data
-                continue
-                
-            # Calculate stock returns
-            stock_returns = calculate_returns(group)
+        for i, stock_code in enumerate(stock_codes):
+            class_idx = model.predict([all_scaled[i]])[0]
             
-            # Match market returns to stock dates
-            aligned_market_returns = []
-            for date in group['TradeDate']:
-                # Get market return for this date if available
-                if date in market_returns_dict:
-                    aligned_market_returns.append(market_returns_dict[date])
-                else:
-                    aligned_market_returns.append(np.nan)
-            
-            aligned_market_returns = pd.Series(aligned_market_returns, index=group.index)
-            
-            # Fit Market Model
-            model_result = fit_market_model(stock_returns, aligned_market_returns)
-            
-            if model_result is None:
-                # Skip if model fitting failed
-                continue
-                
-            # Extract parameters
-            alpha = model_result['alpha']
-            beta = model_result['beta']
-            r_squared = model_result['r_squared']
-            
-            # Predict future returns
-            predicted_returns = predict_future_returns(alpha, beta, future_market_returns)
-            
-            # Calculate average predicted return
-            avg_predicted_return = np.mean(predicted_returns)
-            
-            # Classify prediction
-            prediction = classify_prediction(avg_predicted_return)
-            
-            # Convert prediction to signal and label
+            # Convert class_idx to signal
             signal = "neutral"
             prediction_label = "Đi ngang"
             
-            if prediction == 1:  # Buy
+            if class_idx == 1:  # Up class
                 signal = "strong_buy"
                 prediction_label = "Tăng"
-            elif prediction == -1:  # Sell
+            elif class_idx == -1:  # Down class
                 signal = "strong_sell"
                 prediction_label = "Giảm"
             
-            # Calculate confidence based on R-squared and absolute predicted return
-            # Higher R-squared and larger predicted return = higher confidence
-            confidence = r_squared * min(1.0, abs(avg_predicted_return) * 10)
+            # Get beta value and interpretation if available
+            beta = None
+            beta_interpretation = None
             
-            # Get interpretations
-            beta_interpretation = interpret_beta(beta)
-            alpha_interpretation = interpret_alpha(alpha)
+            if beta_values is not None and not beta_values.empty:
+                beta_row = beta_values[beta_values['stock_code'] == stock_code]
+                if not beta_row.empty:
+                    beta = beta_row.iloc[0]['beta']
+                    beta_interpretation = beta_row.iloc[0]['interpretation']
             
-            # Generate a simulated price trend based on current price and predicted returns
-            current_price = float(group['ClosePrice'].iloc[-1])
-            price_trend = [current_price]
+            # Get confidence from probability
+            confidence = None
+            if len(all_probas[i]) > 1:  # Binary or multiclass
+                confidence = all_probas[i][model.classes_.tolist().index(class_idx)]
+            else:  # Single class
+                confidence = 1.0
             
-            for i in range(days_to_predict):
-                next_price = price_trend[-1] * (1 + predicted_returns[i])
-                price_trend.append(next_price)
-            
-            # Add to predictions
             predictions.append({
-                'stock_code': f"{market_code}:{ticker}",
-                'prediction': prediction,
+                'stock_code': stock_code,
+                'prediction': int(class_idx),
                 'prediction_label': prediction_label,
                 'signal': signal,
-                'confidence': float(confidence),
-                'beta': float(beta),
-                'alpha': float(alpha),
-                'beta_interpretation': beta_interpretation,
-                'alpha_interpretation': alpha_interpretation,
-                'r_squared': float(r_squared),
-                'avg_predicted_return': float(avg_predicted_return),
-                'price_trend': price_trend
+                'confidence': float(confidence) if confidence is not None else None,
+                'beta': float(beta) if beta is not None else None,
+                'beta_interpretation': beta_interpretation
             })
-            
-            # Update overall metrics
-            overall_metrics['avg_r_squared'] += r_squared
-            overall_metrics['avg_beta'] += beta
-            overall_metrics['avg_alpha'] += alpha
-            overall_metrics['stocks_analyzed'] += 1
-                
-        # Calculate averages
-        if overall_metrics['stocks_analyzed'] > 0:
-            overall_metrics['avg_r_squared'] /= overall_metrics['stocks_analyzed']
-            overall_metrics['avg_beta'] /= overall_metrics['stocks_analyzed']
-            overall_metrics['avg_alpha'] /= overall_metrics['stocks_analyzed']
         
         # Sort predictions by confidence
-        predictions = sorted(predictions, key=lambda x: x['confidence'], reverse=True)
+        predictions = sorted(predictions, key=lambda x: x['confidence'] if x['confidence'] else 0, reverse=True)
         
-        print(f"Completed Market Model analysis with {len(predictions)} predictions for days_ahead={days_to_predict}")
+        print(f"Completed SVM analysis with {len(predictions)} predictions for days_ahead={days_to_predict}")
         
         return {
             "success": True,
             "model_metrics": {
-                "avg_r_squared": overall_metrics['avg_r_squared'],
-                "avg_beta": overall_metrics['avg_beta'],
-                "avg_alpha": overall_metrics['avg_alpha'],
-                "stocks_analyzed": overall_metrics['stocks_analyzed']
+                "accuracy": accuracy,
+                "report": report,
+                "confusion_matrix": confusion
             },
             "predictions": predictions,
-            "days_ahead": days_to_predict
+            "days_ahead": days_to_predict,
+            "beta_used": beta_values is not None
         }
     
     except Exception as e:
@@ -389,6 +379,3 @@ def analyze_stocks_with_market_model(stock_data, market_data, days_to_predict=5)
             "success": False,
             "error": str(e)
         }
-
-# For backward compatibility, keep the same function name
-analyze_stocks_with_svm = analyze_stocks_with_market_model 

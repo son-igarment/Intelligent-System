@@ -494,7 +494,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
   );
 };
 
-function MarketModelAnalysis({ onClose, onMenuChange }) {
+function SVMAnalysis({ onClose, onMenuChange }) {
   const currentDate = "2025-03-28";
   const [stocks, setStocks] = useState([]);
   const [tickers, setTickers] = useState([]);
@@ -561,7 +561,7 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
     }
   };
 
-  // Fetch latest Market Model analysis
+  // Fetch latest SVM analysis
   const fetchLatestAnalysis = async () => {
     try {
       setLoading(true);
@@ -577,8 +577,8 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
       
       // Add query parameters to URL if present
       const url = queryParams.toString() 
-        ? `http://localhost:5000/api/latest-market-model-analysis?${queryParams.toString()}`
-        : 'http://localhost:5000/api/latest-market-model-analysis';
+        ? `http://localhost:5000/api/latest-svm-analysis?${queryParams.toString()}`
+        : 'http://localhost:5000/api/latest-svm-analysis';
       
       const response = await fetch(url);
       
@@ -599,8 +599,8 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
     }
   };
 
-  // Perform Market Model analysis
-  const runMarketModelAnalysis = async () => {
+  // Perform SVM analysis
+  const runSVMAnalysis = async () => {
     if (!selectedStock || !selectedTicker) {
       setError('Vui lòng chọn cả Market Code và Ticker để thực hiện phân tích');
       return;
@@ -617,7 +617,6 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
         ticker: selectedTicker
       };
       
-      // Still using the same API endpoint for backward compatibility
       const response = await fetch('http://localhost:5000/api/svm-analysis', {
         method: 'POST',
         headers: {
@@ -633,7 +632,7 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
         setLatestAnalysis({
           date: new Date().toLocaleString(),
           days_to_predict: parseInt(daysToPrediction),
-          accuracy: data.model_metrics.avg_r_squared,
+          accuracy: data.model_metrics.accuracy,
           predictions: data.predictions,
           use_beta: useBeta,
           market_code: selectedStock,
@@ -641,7 +640,7 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
         });
         // Show chart view by default after analysis
         setShowChart(true);
-        alert(`Phân tích SVM hoàn tất với độ R-squared ${(data.model_metrics.avg_r_squared * 100).toFixed(2)}%`);
+        alert(`Phân tích SVM hoàn tất với độ chính xác ${(data.model_metrics.accuracy * 100).toFixed(2)}%`);
       } else {
         setError(data.error || 'Lỗi khi thực hiện phân tích SVM');
       }
@@ -737,7 +736,7 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
         <div className="dashboard-main">
           <div className="report-container">
             <div className="report-header">
-              <h2 className="report-title">Market Model Analysis</h2>
+              <h2 className="report-title">SVM Analysis</h2>
               
               <div className="report-dates">
                 <div>Analysis date: <strong>{latestAnalysis ? latestAnalysis.date : currentDate}</strong></div>
@@ -747,7 +746,7 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
             {/* Analysis Controls */}
             <div className="beta-calculation-container">
               <div className="calculation-section">
-                <h3 className="section-title">Phân tích dự đoán với Mô hình Thị trường (Market Model)</h3>
+                <h3 className="section-title">Phân tích dự đoán với SVM</h3>
                 
                 <div className="calculation-options">
                   <div className="option-group">
@@ -775,7 +774,7 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
                   </div> 
                   <button 
                     className="calculate-btn" 
-                    onClick={runMarketModelAnalysis}
+                    onClick={runSVMAnalysis}
                     disabled={loading || !selectedStock || !selectedTicker}
                   >
                     {loading ? 'Đang phân tích...' : 'Bắt đầu phân tích'}
@@ -790,7 +789,7 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
                 
                 {loading && (
                   <div className="loading-indicator">
-                    <p>Đang thực hiện phân tích Market Model...</p>
+                    <p>Đang thực hiện phân tích SVM...</p>
                   </div>
                 )}
                 
@@ -875,8 +874,6 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
                               <th>Độ tin cậy</th>
                               <th>Hệ số Beta</th>
                               <th>Đánh giá Beta</th>
-                              <th>Hệ số Alpha</th>
-                              <th>Đánh giá Alpha</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -908,10 +905,6 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
                                   {prediction.beta ? prediction.beta.toFixed(4) : 'N/A'}
                                 </td>
                                 <td>{prediction.beta_interpretation || 'N/A'}</td>
-                                <td style={{ color: prediction.alpha > 0 ? '#28a745' : prediction.alpha < 0 ? '#dc3545' : '#6c757d' }}>
-                                  {prediction.alpha ? prediction.alpha.toFixed(4) : 'N/A'}
-                                </td>
-                                <td>{prediction.alpha_interpretation || 'N/A'}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -920,17 +913,19 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
                     )}
                     
                     <div className="model-info-section">
-                      <h4>Mô hình hồi quy tuyến tính (Market Model)</h4>
-                      <p>Công thức: Ri = αi + βiRm + ϵi - phân tích mối quan hệ tuyến tính về hiệu quả sinh lời giữa một chứng khoán cụ thể với hiệu quả sinh lời của thị trường.</p>
+                      <h4>Mô hình SVM</h4>
+                      <p>Support Vector Machine (SVM) là thuật toán học máy phân loại mạnh mẽ, được sử dụng ở đây để dự đoán biến động giá cổ phiếu dựa trên các chỉ báo kỹ thuật, đặc điểm lịch sử giá và hệ số Beta.</p>
                       
                       <div className="model-features">
-                        <h5>Các yếu tố trong mô hình:</h5>
+                        <h5>Các chỉ báo được sử dụng:</h5>
                         <ul>
-                          <li><strong>Ri (Biến phụ thuộc):</strong> Tỷ suất sinh lợi của chứng khoán i</li>
-                          <li><strong>Rm (Biến độc lập):</strong> Tỷ suất sinh lợi của thị trường</li>
-                          <li><strong>βi (Hệ số Beta):</strong> Đo lường mức độ nhạy cảm của tỷ suất sinh lợi chứng khoán với thị trường</li>
-                          <li><strong>αi (Hệ số Alpha):</strong> Tỷ suất sinh lợi kỳ vọng của chứng khoán khi thị trường đứng yên</li>
-                          <li><strong>ϵi (Sai số ngẫu nhiên):</strong> Phần biến động không giải thích được bởi mô hình</li>
+                          <li>Giá hiện tại (Current Price)</li>
+                          <li>Chỉ số sức mạnh tương đối (RSI)</li>
+                          <li>Chỉ báo MACD (Moving Average Convergence Divergence)</li>
+                          <li>Dải Bollinger (Bollinger Bands)</li>
+                          <li>Khối lượng cân bằng (On-Balance Volume)</li>
+                          <li>Biến động trung bình thực (ATR)</li>
+                          <li>Hệ số Beta (sử dụng để đánh giá rủi ro hệ thống)</li>
                         </ul>
                       </div>
                     </div>
@@ -939,7 +934,7 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
                 
                 {(!latestAnalysis || !latestAnalysis.predictions) && !loading && !error && (
                   <div className="no-analysis">
-                    <p>Chưa có dữ liệu phân tích. Vui lòng chọn Market Code và Ticker sau đó chạy phân tích để bắt đầu.</p>
+                    <p>Chưa có dữ liệu phân tích. Vui lòng chọn Market Code và Ticker sau đó chạy phân tích SVM để bắt đầu.</p>
                   </div>
                 )}
               </div>
@@ -951,4 +946,4 @@ function MarketModelAnalysis({ onClose, onMenuChange }) {
   );
 }
 
-export default MarketModelAnalysis;
+export default SVMAnalysis;
