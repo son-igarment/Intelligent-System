@@ -282,8 +282,8 @@ function DataImport({ onClose, onMenuChange }) {
             Dashboard
           </div>
         
-          <div className="sidebar-item" onClick={() => onMenuChange('tool')}>
-            Analyst tool
+          <div className="sidebar-item" onClick={() => onMenuChange('report')}>
+            Assetss Report
           </div>
 
           <div className="sidebar-item" onClick={() => onMenuChange('beta')}>
