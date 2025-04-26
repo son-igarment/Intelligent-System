@@ -3,7 +3,7 @@ import './App.css';
 
 function BetaCalculation({ onClose, onMenuChange }) {
   const currentDate = "2025-03-28";
-  const [stocks, setStocks] = useState([]);
+  const [stocks, setStocks] = useState(['HNX','HOSE','UPCOM']); // Initialize with fixed market codes
   const [tickers, setTickers] = useState([]);
   const [filteredTickers, setFilteredTickers] = useState([]);
   const [allData, setAllData] = useState([]);
@@ -69,9 +69,9 @@ function BetaCalculation({ onClose, onMenuChange }) {
         // Store all data for filtering
         setAllData(data);
         
-        // Extract unique market codes (HNX, HOSE, etc.)
-        const uniqueMarketCodes = [...new Set(data.map(item => item.MarketCode))];
-        setStocks(uniqueMarketCodes);
+        // Skip setting market codes as they're already initialized
+        // const uniqueMarketCodes = [...new Set(data.map(item => item.MarketCode))];
+        // setStocks(uniqueMarketCodes);
         
         // Extract unique ticker symbols (VLA, MCF, BXH, etc.)
         const uniqueTickers = [...new Set(data.map(item => item.Ticker))];

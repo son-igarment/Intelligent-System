@@ -600,7 +600,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
 
 function SVMAnalysis({ onClose, onMenuChange }) {
   const currentDate = "2025-03-28";
-  const [stocks, setStocks] = useState([]);
+  const [stocks, setStocks] = useState(['HNX','HOSE','UPCOM']); // Initialize with fixed market codes
   const [tickers, setTickers] = useState([]);
   const [filteredTickers, setFilteredTickers] = useState([]);
   const [allData, setAllData] = useState([]);
@@ -612,7 +612,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
   const [latestAnalysis, setLatestAnalysis] = useState(null);
   const [selectedStock, setSelectedStock] = useState('');
   const [selectedTicker, setSelectedTicker] = useState('');
-  const [showChart, setShowChart] = useState(false);
+  const [showChart, setShowChart] = useState(true);
 
   // Fetch stocks and tickers on component load
   useEffect(() => {
@@ -647,9 +647,9 @@ function SVMAnalysis({ onClose, onMenuChange }) {
         // Store all data for filtering
         setAllData(data);
         
-        // Extract unique market codes (HNX, HOSE, etc.)
-        const uniqueMarketCodes = [...new Set(data.map(item => item.MarketCode))];
-        setStocks(uniqueMarketCodes);
+        // Skip setting market codes as they're already initialized
+        // const uniqueMarketCodes = [...new Set(data.map(item => item.MarketCode))];
+        // setStocks(uniqueMarketCodes);
         
         // Extract unique ticker symbols (VLA, MCF, BXH, etc.)
         const uniqueTickers = [...new Set(data.map(item => item.Ticker))];
@@ -689,6 +689,10 @@ function SVMAnalysis({ onClose, onMenuChange }) {
       if (response.ok) {
         const data = await response.json();
         setLatestAnalysis(data);
+        // Set chart view to true when analysis data is loaded
+        if (data && data.predictions && data.predictions.length > 0) {
+          setShowChart(true);
+        }
       } else {
         // If no analysis exists, don't show an error
         if (response.status !== 404) {
@@ -713,6 +717,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
     try {
       setLoading(true);
       setError('');
+      setShowChart(true); // Set chart view to true before making the request
       
       const requestBody = {
         days_to_predict: parseInt(daysToPrediction),
@@ -742,8 +747,6 @@ function SVMAnalysis({ onClose, onMenuChange }) {
           market_code: selectedStock,
           ticker: selectedTicker
         });
-        // Show chart view by default after analysis
-        setShowChart(true);
         alert(`Phân tích SVM hoàn tất với độ chính xác ${(data.model_metrics.accuracy * 100).toFixed(2)}%`);
       } else {
         setError(data.error || 'Lỗi khi thực hiện phân tích SVM');
