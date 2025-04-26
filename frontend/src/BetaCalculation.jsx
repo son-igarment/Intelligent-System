@@ -44,17 +44,8 @@ function BetaCalculation({ onClose, onMenuChange }) {
 
   // Update filtered tickers when MarketCode changes
   useEffect(() => {
-    if (selectedStock) {
-      const filtered = allData
-        .filter(item => item.MarketCode === selectedStock)
-        .map(item => item.Ticker);
-      setFilteredTickers([...new Set(filtered)]);
-      setSelectedTicker(''); // Reset ticker selection when MarketCode changes
-    } else {
-      // If no MarketCode selected, show all tickers
-      setFilteredTickers(tickers);
-    }
-  }, [selectedStock, allData, tickers]);
+    filterByMarketCode();
+  }, [selectedStock]);
 
   // Fetch available stocks and tickers
   const fetchStocksAndTickers = async () => {
@@ -66,26 +57,47 @@ function BetaCalculation({ onClose, onMenuChange }) {
       const uniqueMarketCodes = ['HNX', 'HOSE', 'UPCOM'];
       setStocks(uniqueMarketCodes);
       
-      // Fetch tickers data
-      const response = await fetch('http://localhost:5001/api/stock-data');
-      const data = await response.json();
-      
-      if (response.ok) {
-        // Store all data for filtering
-        setAllData(data);
-        
-        // Extract unique ticker symbols (VLA, MCF, BXH, etc.)
-        const uniqueTickers = [...new Set(data.map(item => item.Ticker))];
-        setTickers(uniqueTickers);
-        setFilteredTickers(uniqueTickers); // Initialize filtered tickers with all tickers
-      } else {
-        setError('Không thể lấy dữ liệu cổ phiếu');
-      }
+      // No need to fetch all data initially - we'll fetch filtered data when market code is selected
+      setLoading(false);
     } catch (err) {
       setError(`Lỗi khi tải dữ liệu: ${err.message}`);
-    } finally {
       setLoading(false);
     }
+  };
+
+  // Filter data by market code - similar to Dashboard.jsx
+  const filterByMarketCode = () => {
+    if (!selectedStock) {
+      // If no market code is selected, clear data
+      setAllData([]);
+      setFilteredTickers([]);
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    
+    // Filter the data by selected market code
+    fetch('http://localhost:5001/api/stock-data-with-beta?market_code=' + selectedStock)
+      .then(response => response.json())
+      .then(data => {
+        if (data && Array.isArray(data)) {
+          setAllData(data);
+          // Extract unique ticker symbols for the selected market code
+          const uniqueTickers = [...new Set(data.map(item => item.Ticker))];
+          setFilteredTickers(uniqueTickers);
+          // Reset ticker selection when market code changes
+          setSelectedTicker('');
+        } else {
+          setError('Không có dữ liệu cho mã thị trường đã chọn');
+        }
+      })
+      .catch(err => {
+        setError('Lỗi khi lọc dữ liệu: ' + err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   // Calculate Beta for all stocks
