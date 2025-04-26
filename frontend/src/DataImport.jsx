@@ -283,7 +283,7 @@ function DataImport({ onClose, onMenuChange }) {
           </div>
         
           <div className="sidebar-item" onClick={() => onMenuChange('report')}>
-            Assets Report
+            Assetss Report
           </div>
 
           <div className="sidebar-item" onClick={() => onMenuChange('beta')}>

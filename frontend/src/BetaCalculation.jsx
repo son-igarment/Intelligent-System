@@ -3,7 +3,7 @@ import './App.css';
 
 function BetaCalculation({ onClose, onMenuChange }) {
   const currentDate = "2025-03-28";
-  const [stocks, setStocks] = useState([]);
+  const [stocks, setStocks] = useState(['HNX','HOSE','UPCOM']); // Initialize with fixed market codes
   const [tickers, setTickers] = useState([]);
   const [filteredTickers, setFilteredTickers] = useState([]);
   const [allData, setAllData] = useState([]);
@@ -62,17 +62,16 @@ function BetaCalculation({ onClose, onMenuChange }) {
       setLoading(true);
       setError('');
       
-      // Set market codes directly like in Dashboard.jsx
-      const uniqueMarketCodes = ['HNX', 'HOSE', 'UPCOM'];
-      setStocks(uniqueMarketCodes);
-      
-      // Fetch tickers data
       const response = await fetch('http://localhost:5001/api/stock-data');
       const data = await response.json();
       
       if (response.ok) {
         // Store all data for filtering
         setAllData(data);
+        
+        // Skip setting market codes as they're already initialized
+        // const uniqueMarketCodes = [...new Set(data.map(item => item.MarketCode))];
+        // setStocks(uniqueMarketCodes);
         
         // Extract unique ticker symbols (VLA, MCF, BXH, etc.)
         const uniqueTickers = [...new Set(data.map(item => item.Ticker))];
