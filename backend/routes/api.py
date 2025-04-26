@@ -620,76 +620,94 @@ def get_stock_data_with_beta():
         return jsonify({"error": "Database connection not available"}), 500
     
     try:
+
+        # Get parameters from the request
+        args = request.args
+        market_code = args['market_code']  # Market code (HNX, HOSE)
+
+        if not market_code:
+            return jsonify({"error": "Market code are required"}), 400
+
         # Get stock data
-        stock_data = list(current_app.db.stock_data.find({}, {'_id': 0}))
+        # stock_data = list(current_app.db.stock_data.find({}, {'_id': 0}))
+        stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code}, {'_id': 0}))
         if not stock_data:
             return jsonify({"error": "No stock data available"}), 404
         
         # Get beta values
-        beta_values = list(current_app.db.beta_values.find({}, {'_id': 0}))
-        
+        # beta_values = list(current_app.db.beta_values.find({}, {'_id': 0}))
+        beta_values = list(current_app.db.beta_values.find({'market_code': market_code}, {'_id': 0}))
+
         # Create a dictionary for quick lookup of beta values
-        beta_dict = {}
-        for beta in beta_values:
-            # Create a key using market_code and ticker
-            if 'market_code' in beta and 'ticker' in beta:
-                key = f"{beta['market_code']}:{beta['ticker']}"
-                beta_dict[key] = beta
-            # Also try with stock_code if available
-            elif 'stock_code' in beta:
-                beta_dict[beta['stock_code']] = beta
-        
+        # beta_dict = {}
+        # for beta in beta_values:
+        #     # Create a key using market_code and ticker
+        #     if 'market_code' in beta and 'ticker' in beta:
+        #         key = f"{beta['market_code']}:{beta['ticker']}"
+        #         beta_dict[key] = beta
+        #     # Also try with stock_code if available
+        #     elif 'stock_code' in beta:
+        #         beta_dict[beta['stock_code']] = beta
+
+        stock_df = pd.DataFrame(stock_data)
+        date = max(stock_df['TradeDate'].values, key=lambda d: datetime.strptime(d, '%Y-%m-%d'))
+        # stock_period = stock_data[stock_data['TradeDate'] == date]
+
         # Process stock data
         result = []
         for stock in stock_data:
             if 'MarketCode' not in stock or 'Ticker' not in stock:
                 continue
-                
-            # Extract basic fields
+
             market_code = stock.get('MarketCode')
             ticker = stock.get('Ticker')
-            close_price = float(stock.get('ClosePrice', 0))
-            total_volume = float(stock.get('TotalVolume', 0))
-            open_price = float(stock.get('OpenPrice', 0))
-            
-            # Calculate derived fields
-            current_price = total_volume * close_price
-            profit_loss = current_price - open_price
-            profit_loss_percent = 0
-            if open_price > 0:
-                profit_loss_percent = (profit_loss / open_price) * 100
-            
-            # Prepare stock entry
-            stock_entry = {
-                'MarketCode': market_code,
-                'Ticker': ticker,
-                'ClosePrice': close_price,
-                'TotalVolume': total_volume,
-                'OpenPrice': open_price,
-                'CurrentPrice': current_price,
-                'ProfitLoss': profit_loss,
-                'ProfitLossPercent': profit_loss_percent
-            }
-            
-            # Add beta and risk information if available
-            key = f"{market_code}:{ticker}"
-            if key in beta_dict:
-                beta_value = beta_dict[key].get('beta')
-                stock_entry['beta'] = beta_value
-                
-                # Determine risk based on beta value
-                if beta_value is not None:
-                    if beta_value == 1:
-                        stock_entry['risk'] = 'medium'
-                    else:  # beta > 1 or beta < 1
-                        stock_entry['risk'] = 'high'
+            stock_date = stock.get('TradeDate')
+            if any(market_code in beta.values() and ticker in beta.values() for beta in beta_values) and stock_date == date:
+                # Extract basic fields
+                close_price = float(stock.get('ClosePrice', 0))
+                total_volume = float(stock.get('TotalVolume', 0))
+                open_price = float(stock.get('OpenPrice', 0))
+
+                # Calculate derived fields
+                current_price = total_volume * close_price
+                profit_loss = current_price - open_price
+                profit_loss_percent = 0
+                if open_price > 0:
+                    profit_loss_percent = (profit_loss / open_price) * 100
+
+                # Prepare stock entry
+                stock_entry = {
+                    'MarketCode': market_code,
+                    'Ticker': ticker,
+                    'ClosePrice': close_price,
+                    'TotalVolume': total_volume,
+                    'OpenPrice': open_price,
+                    'CurrentPrice': current_price,
+                    'ProfitLoss': profit_loss,
+                    'ProfitLossPercent': profit_loss_percent
+                }
+
+                # Add beta and risk information if available
+                key = f"{market_code}:{ticker}"
+                if any(key in beta.values() for beta in beta_values):
+                    for beta in beta_values:
+                        if key in beta.values():
+                            beta_value = beta.get('beta')
+                            stock_entry['beta'] = beta_value
+
+                            # Determine risk based on beta value
+                            if beta_value is not None:
+                                if beta_value == 1:
+                                    stock_entry['risk'] = 'medium'
+                                else:  # beta > 1 or beta < 1
+                                    stock_entry['risk'] = 'high'
+                            else:
+                                stock_entry['risk'] = 'unknown'
                 else:
+                    stock_entry['beta'] = None
                     stock_entry['risk'] = 'unknown'
-            else:
-                stock_entry['beta'] = None
-                stock_entry['risk'] = 'unknown'
-            
-            result.append(stock_entry)
+
+                result.append(stock_entry)
         
         return jsonify(result)
     

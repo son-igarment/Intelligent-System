@@ -23,25 +23,8 @@ function Dashboard({ onClose }) {
   }, []);
 
   const fetchMarketCodes = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      const response = await fetch('http://localhost:5001/api/stock-data-with-beta');
-      const data = await response.json();
-      
-      if (response.ok) {
-        // Extract unique market codes
-        const uniqueMarketCodes = [...new Set(data.map(item => item.MarketCode))];
-        setMarketCodes(uniqueMarketCodes);
-      } else {
-        setError('Failed to fetch market codes: ' + (data.error || 'Unknown error'));
-      }
-    } catch (err) {
-      setError('Error: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
+    const uniqueMarketCodes = ['HNX','HOSE','UPCOM'];
+    setMarketCodes(uniqueMarketCodes);
   };
 
   const filterByMarketCode = () => {
@@ -52,14 +35,11 @@ function Dashboard({ onClose }) {
     }
     
     // Filter the data by selected market code
-    fetch('http://localhost:5001/api/stock-data-with-beta')
+    fetch('http://localhost:5001/api/stock-data-with-beta?market_code=' + selectedMarketCode)
       .then(response => response.json())
       .then(data => {
         if (data) {
-          const filteredData = data.filter(item => 
-            item.MarketCode === selectedMarketCode
-          );
-          setStockData(filteredData);
+          setStockData(data);
         }
       })
       .catch(err => {
