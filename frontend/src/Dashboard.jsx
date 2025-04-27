@@ -23,6 +23,7 @@ function Dashboard({ onClose }) {
   }, []);
 
   const fetchMarketCodes = async () => {
+    setError('');
     fetch('http://localhost:5001/api/market-code')
         .then(response => response.json())
         .then(data => {
@@ -36,6 +37,7 @@ function Dashboard({ onClose }) {
   };
 
   const filterByMarketCode = () => {
+    setError('');
     if (!selectedMarketCode) {
       // If no market code is selected, clear data
       setStockData([]);

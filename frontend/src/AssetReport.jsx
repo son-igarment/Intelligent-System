@@ -15,6 +15,7 @@ function AssetReport({ onClose, onMenuChange }) {
   }, []);
 
   const fetchMarketCodes = async () => {
+    setError('');
     fetch('http://localhost:5001/api/market-code')
         .then(response => response.json())
         .then(data => {
@@ -28,6 +29,7 @@ function AssetReport({ onClose, onMenuChange }) {
   };
 
   const filterByMarketCode = () => {
+    setError('');
     if (!selectedMarketCode) {
       // If no market code is selected, clear data
       setAssetData([]);
@@ -132,6 +134,7 @@ function AssetReport({ onClose, onMenuChange }) {
                       <th>Current Price</th>
                       <th>Profit / Loss</th>
                       <th>Profit / Loss (%)</th>
+                      <th>Weight</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -149,6 +152,7 @@ function AssetReport({ onClose, onMenuChange }) {
                         <td className={asset.ProfitLossPercent >= 0 ? 'profit' : 'loss'}>
                           {asset.ProfitLossPercent.toFixed(2)}%
                         </td>
+                        <td>{asset.weight !== "" ? asset.weight.toFixed(2) + "%" : 'N/A'}</td>
                       </tr>
                     ))}
                   </tbody>

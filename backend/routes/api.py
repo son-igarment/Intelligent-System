@@ -1,3 +1,4 @@
+import numpy as np
 from flask import Blueprint, jsonify, request, current_app
 from models.item import create_item_model, validate_item
 import pandas as pd
@@ -251,7 +252,6 @@ def get_all_market_code():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @api.route('/ticker', methods=['GET'])
 def get_all_ticker():
     if not current_app.db:
@@ -274,7 +274,6 @@ def get_all_ticker():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 # Lấy tất cả dữ liệu đã import
 @api.route('/stock-data', methods=['GET'])
@@ -425,7 +424,6 @@ def calculate_beta():
 
     # Retrieve stock data from MongoDB
     return get_beta(market_code, ticker, days_to_predict)
-
 
 # Endpoint to get Beta for a portfolio
 @api.route('/calculate-portfolio-beta', methods=['POST'])
@@ -674,14 +672,15 @@ def get_stock_data_with_beta():
             return jsonify({"error": "Market code are required"}), 400
 
         # Get stock data
-        # stock_data = list(current_app.db.stock_data.find({}, {'_id': 0}))
         stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code}, {'_id': 0}))
         if not stock_data:
             return jsonify({"error": "No stock data available"}), 404
         
         # Get beta values
-        # beta_values = list(current_app.db.beta_values.find({}, {'_id': 0}))
         beta_values = list(current_app.db.beta_values.find({'market_code': market_code}, {'_id': 0}))
+
+        # Get svm analyses values
+        svm_values = list(current_app.db.svm_analyses.find({'market_code': market_code}, {'_id': 0}))
 
         # Create a dictionary for quick lookup of beta values
         # beta_dict = {}
@@ -714,7 +713,7 @@ def get_stock_data_with_beta():
                 open_price = float(stock.get('OpenPrice', 0))
 
                 # Calculate derived fields
-                current_price = total_volume * close_price
+                current_price = close_price
                 profit_loss = current_price - open_price
                 profit_loss_percent = 0
                 if open_price > 0:
@@ -751,6 +750,16 @@ def get_stock_data_with_beta():
                 else:
                     stock_entry['beta'] = None
                     stock_entry['risk'] = 'unknown'
+
+                # Add SVM analysis if available
+                if any(market_code in svm.values() and ticker in svm.values() for svm in svm_values):
+                    for svm in svm_values:
+                        if market_code == svm['market_code'] and ticker == svm['ticker']:
+                            weight = float(svm['report']['weighted avg'].get('precision', 0))
+                            stock_entry['weight'] = weight * 100
+                            break
+                else:
+                    stock_entry['weight'] = ""
 
                 result.append(stock_entry)
         
