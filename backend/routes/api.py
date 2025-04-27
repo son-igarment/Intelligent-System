@@ -281,17 +281,12 @@ def get_all_ticker():
 def get_all_stock_data():
     if not current_app.db:
         return jsonify({"error": "Database connection not available"}), 500
-
-    args = request.args
-    market_code = args['market_code']  # Market code (HNX, HOSE)
     
     try:
         # Có thể thêm giới hạn và phân trang nếu dữ liệu lớn
-        # limit = int(request.args.get('limit', 100))
-        if not market_code:
-            data = list(current_app.db.stock_data.find({}, {'_id': 0}))
-        else:
-            data = list(current_app.db.stock_data.find({'MarketCode': market_code}, {'_id': 0}))
+        limit = int(request.args.get('limit', 100))
+
+        data = list(current_app.db.stock_data.find({}, {'_id': 0}))
         
         return jsonify(data)
     except Exception as e:
