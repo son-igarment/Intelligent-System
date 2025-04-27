@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from flask import jsonify
 from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
@@ -263,115 +264,70 @@ def get_prediction_label(prediction):
 def analyze_stocks_with_svm(stock_data, beta_values, days_to_predict=5):
     """
     Analyze stocks with SVM model to predict price movements
-    
+
     Parameters:
     stock_data (DataFrame): Historical stock data
     beta_values (DataFrame): Beta values (optional)
     days_to_predict (int): Number of days to predict ahead
-    market_code (str, optional): MarketCode to filter (e.g., "HOSE", "HNX")
-    ticker (str, optional): Ticker symbol to filter (e.g., "VLA", "MCF")
-    
+
     Returns:
     dict: Result of SVM analysis including predictions and metrics
     """
     try:
-        # Filter the stock data if market_code or ticker is specified
-        filtered_data = stock_data.copy()
-        
         # Prepare features
-        X, y, stock_codes, dates = prepare_features(filtered_data, beta_values, days_to_predict)
-        
+        X, y, stock_codes, dates = prepare_features(stock_data, beta_values, days_to_predict)
+
         if len(X) == 0 or len(y) == 0:
             return {
                 "success": False,
                 "error": "Insufficient data for analysis after filtering"
             }
-        
-        # Split into training and testing sets
-        X_train, X_test, y_train, y_test, train_indices, test_indices = train_test_split(
-            X, y, range(len(X)), test_size=0.2, random_state=42
-        )
-        
-        # Standardize features
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-        X_test_scaled = scaler.transform(X_test)
-        
+
         # Train SVM model
-        model = SVC(kernel='rbf', C=1.0, gamma='scale', probability=True)
-        model.fit(X_train_scaled, y_train)
-        
-        # Evaluate model
-        y_pred = model.predict(X_test_scaled)
-        accuracy = accuracy_score(y_test, y_pred)
-        report = classification_report(y_test, y_pred, output_dict=True)
-        confusion = confusion_matrix(y_test, y_pred).tolist()
-        
-        # Get predictions for all samples
-        all_scaled = scaler.transform(X)
-        all_probas = model.predict_proba(all_scaled)
-        
-        # Prepare predictions
+        model, scaler, accuracy, report, cm = train_svm_model(X, y, days_to_predict)
+
+        # Predict for all samples
         predictions = []
-        
-        for i, stock_code in enumerate(stock_codes):
-            class_idx = model.predict([all_scaled[i]])[0]
-            
-            # Convert class_idx to signal
-            signal = "neutral"
-            prediction_label = "Đi ngang"
-            
-            if class_idx == 1:  # Up class
-                signal = "strong_buy"
-                prediction_label = "Tăng"
-            elif class_idx == -1:  # Down class
-                signal = "strong_sell"
-                prediction_label = "Giảm"
-            
+        for i, features in enumerate(X):
+            prediction = predict_stock_movement(model, scaler, features)
+            label, signal = get_prediction_label(prediction)
+
             # Get beta value and interpretation if available
             beta = None
             beta_interpretation = None
-            
             if beta_values is not None and not beta_values.empty:
-                beta_row = beta_values[beta_values['stock_code'] == stock_code]
+                beta_row = beta_values[beta_values['stock_code'] == stock_codes[i]]
                 if not beta_row.empty:
                     beta = beta_row.iloc[0]['beta']
                     beta_interpretation = beta_row.iloc[0]['interpretation']
-            
-            # Get confidence from probability
-            confidence = None
-            if len(all_probas[i]) > 1:  # Binary or multiclass
-                confidence = all_probas[i][model.classes_.tolist().index(class_idx)]
-            else:  # Single class
-                confidence = 1.0
-            
+
             predictions.append({
-                'stock_code': stock_code,
-                'prediction': int(class_idx),
-                'prediction_label': prediction_label,
+                'stock_code': stock_codes[i],
+                'date': str(dates[i]),
+                'prediction': str(prediction),
+                'prediction_label': label,
                 'signal': signal,
-                'confidence': float(confidence) if confidence is not None else None,
                 'beta': float(beta) if beta is not None else None,
                 'beta_interpretation': beta_interpretation
             })
-        
-        # Sort predictions by confidence
-        predictions = sorted(predictions, key=lambda x: x['confidence'] if x['confidence'] else 0, reverse=True)
-        
+
+        # Sort predictions by stock code and date
+        predictions = sorted(predictions, key=lambda x: (x['stock_code'], x['date']))
+
         print(f"Completed SVM analysis with {len(predictions)} predictions for days_ahead={days_to_predict}")
-        
+
         return {
             "success": True,
             "model_metrics": {
                 "accuracy": accuracy,
                 "report": report,
-                "confusion_matrix": confusion
+                "confusion_matrix": cm
             },
             "predictions": predictions,
             "days_ahead": days_to_predict,
             "beta_used": beta_values is not None
         }
-    
+
     except Exception as e:
         import traceback
         traceback.print_exc()

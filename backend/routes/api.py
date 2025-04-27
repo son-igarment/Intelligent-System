@@ -603,6 +603,8 @@ def svm_analysis():
             "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "days_to_predict": days_to_predict,
             "accuracy": analysis_result["model_metrics"]["accuracy"],
+            "report": analysis_result["model_metrics"]["report"],
+            "confusion_matrix": analysis_result["model_metrics"]["confusion_matrix"],
             "predictions": analysis_result["predictions"],
             "market_code": market_code,
             "ticker": ticker
