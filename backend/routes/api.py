@@ -234,6 +234,48 @@ def get_import_data(import_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@api.route('/market-code', methods=['GET'])
+def get_all_market_code():
+    if not current_app.db:
+        return jsonify({"error": "Database connection not available"}), 500
+
+    try:
+        # Có thể thêm giới hạn và phân trang nếu dữ liệu lớn
+        # limit = int(request.args.get('limit', 100))
+
+        data = list(current_app.db.stock_data.find({}, {'_id': 0}))
+
+        result = list(set(d.get('MarketCode') for d in data))
+
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api.route('/ticker', methods=['GET'])
+def get_all_ticker():
+    if not current_app.db:
+        return jsonify({"error": "Database connection not available"}), 500
+
+    args = request.args
+    market_code = args['market_code']  # Market code (HNX, HOSE)
+
+    if not market_code:
+        return jsonify({"error": "Market code is required"}), 400
+
+    try:
+        # Có thể thêm giới hạn và phân trang nếu dữ liệu lớn
+        # limit = int(request.args.get('limit', 100))
+
+        data = list(current_app.db.stock_data.find({'MarketCode': market_code}, {'_id': 0}))
+
+        result = list(set(d.get('Ticker') for d in data))
+
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # Lấy tất cả dữ liệu đã import
 @api.route('/stock-data', methods=['GET'])
 def get_all_stock_data():

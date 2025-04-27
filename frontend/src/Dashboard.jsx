@@ -23,8 +23,16 @@ function Dashboard({ onClose }) {
   }, []);
 
   const fetchMarketCodes = async () => {
-    const uniqueMarketCodes = ['HNX','HOSE','UPCOM'];
-    setMarketCodes(uniqueMarketCodes);
+    fetch('http://localhost:5001/api/market-code')
+        .then(response => response.json())
+        .then(data => {
+          if (data) {
+            setMarketCodes(data);
+          }
+        })
+        .catch(err => {
+          setError('Error filtering data: ' + err.message);
+        });
   };
 
   const filterByMarketCode = () => {

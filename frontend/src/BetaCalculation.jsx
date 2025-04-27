@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
+
+
 function BetaCalculation({ onClose, onMenuChange }) {
   const currentDate = "2025-03-28";
-  const [stocks, setStocks] = useState(['HNX','HOSE','UPCOM']); // Initialize with fixed market codes
+  const [stocks, setMarketCodes] = useState([]); // Initialize with fixed market codes
   const [tickers, setTickers] = useState([]);
   const [filteredTickers, setFilteredTickers] = useState([]);
   const [allData, setAllData] = useState([]);
   const [betaResults, setBetaResults] = useState([]);
-  const [selectedStock, setSelectedStock] = useState('');
+  const [selectedMarketCode, setMarketCode] = useState('');
   const [selectedTicker, setSelectedTicker] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -42,44 +44,47 @@ function BetaCalculation({ onClose, onMenuChange }) {
     fetchStocksAndTickers();
   }, []);
 
-  // Update filtered tickers when MarketCode changes
-  useEffect(() => {
-    if (selectedStock) {
-      const filtered = allData
-        .filter(item => item.MarketCode === selectedStock)
-        .map(item => item.Ticker);
-      setFilteredTickers([...new Set(filtered)]);
+  function setSelectedMarketCode(value) {
+    setMarketCode(value)
+    try {
+      setLoading(true);
+      setError('');
+      // Filter the data by selected market code
+      fetch('http://localhost:5001/api/ticker?market_code=' + value)
+          .then(response => response.json())
+          .then(data => {
+            if (data) {
+              setTickers(data);
+              setFilteredTickers(data);
+            }
+          })
+          .catch(err => {
+            setError('Error filtering data: ' + err.message);
+          });
+
       setSelectedTicker(''); // Reset ticker selection when MarketCode changes
-    } else {
-      // If no MarketCode selected, show all tickers
-      setFilteredTickers(tickers);
+    } catch (err) {
+      setError(`Lỗi khi tải dữ liệu: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
-  }, [selectedStock, allData, tickers]);
+  }
 
   // Fetch available stocks and tickers
   const fetchStocksAndTickers = async () => {
     try {
       setLoading(true);
       setError('');
-      
-      const response = await fetch('http://localhost:5001/api/stock-data');
-      const data = await response.json();
-      
-      if (response.ok) {
-        // Store all data for filtering
-        setAllData(data);
-        
-        // Skip setting market codes as they're already initialized
-        // const uniqueMarketCodes = [...new Set(data.map(item => item.MarketCode))];
-        // setStocks(uniqueMarketCodes);
-        
-        // Extract unique ticker symbols (VLA, MCF, BXH, etc.)
-        const uniqueTickers = [...new Set(data.map(item => item.Ticker))];
-        setTickers(uniqueTickers);
-        setFilteredTickers(uniqueTickers); // Initialize filtered tickers with all tickers
-      } else {
-        setError('Không thể lấy dữ liệu cổ phiếu');
-      }
+      fetch('http://localhost:5001/api/market-code')
+          .then(response => response.json())
+          .then(data => {
+            if (data) {
+              setMarketCodes(data);
+            }
+          })
+          .catch(err => {
+            setError('Error filtering data: ' + err.message);
+          });
     } catch (err) {
       setError(`Lỗi khi tải dữ liệu: ${err.message}`);
     } finally {
@@ -130,7 +135,7 @@ function BetaCalculation({ onClose, onMenuChange }) {
 
   // Calculate Beta for a specific stock or ticker
   const calculateStockBeta = async () => {
-    if (!selectedStock && !selectedTicker) {
+    if (!selectedMarketCode && !selectedTicker) {
       setError('Vui lòng chọn mã chứng khoán hoặc ticker');
       return;
     }
@@ -144,8 +149,8 @@ function BetaCalculation({ onClose, onMenuChange }) {
       };
       
       // Add market_code and ticker to the request separately
-      if (selectedStock) {
-        requestBody.market_code = selectedStock;
+      if (selectedMarketCode) {
+        requestBody.market_code = selectedMarketCode;
       }
       
       if (selectedTicker) {
@@ -234,8 +239,8 @@ function BetaCalculation({ onClose, onMenuChange }) {
       };
       
       // Add market_code and ticker if selected
-      if (selectedStock) {
-        requestBody.market_code = selectedStock;
+      if (selectedMarketCode) {
+        requestBody.market_code = selectedMarketCode;
       }
       
       if (selectedTicker) {
@@ -337,8 +342,8 @@ function BetaCalculation({ onClose, onMenuChange }) {
                 <div className="calculation-options">
                   <div className="option-group">
                     <select 
-                      value={selectedStock} 
-                      onChange={(e) => setSelectedStock(e.target.value)}
+                      value={selectedMarketCode}
+                      onChange={(e) => setSelectedMarketCode(e.target.value)}
                       className="stock-select"
                     >
                       <option value="">-- Chọn market code --</option>
@@ -351,7 +356,7 @@ function BetaCalculation({ onClose, onMenuChange }) {
                       value={selectedTicker} 
                       onChange={(e) => setSelectedTicker(e.target.value)}
                       className="ticker-select"
-                      disabled={!selectedStock}
+                      disabled={!selectedMarketCode}
                     >
                       <option value="">-- Chọn ticker --</option>
                       {filteredTickers.map(ticker => (
@@ -362,7 +367,7 @@ function BetaCalculation({ onClose, onMenuChange }) {
                     <button 
                       className="calculate-btn" 
                       onClick={calculateStockBeta}
-                      disabled={loading || (!selectedStock && !selectedTicker)}
+                      disabled={loading || (!selectedMarketCode && !selectedTicker)}
                     >
                       Tính Beta cho mã đã chọn
                     </button>
