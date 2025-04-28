@@ -364,7 +364,7 @@ def get_beta(market_code, ticker, days_to_predict = 5):
 
         # Get market index data from market_index_data collection
         mc = "HSX" if market_code == "HOSE" else market_code
-        market_data = list(current_app.db.market_index_data.find({'MarketCode': mc, 'IndexCode': code_mapping[market_code]}, {'_id': 0}))
+        market_data = list(current_app.db.market_index_data.find({'MarketCode': mc, 'IndexCode': code_mapping[mc]}, {'_id': 0}))
 
         # Convert to DataFrame
         market_df = pd.DataFrame(market_data)
@@ -573,10 +573,7 @@ def svm_analysis():
         beta_values = None
 
         # Lấy giá trị beta phù hợp với khoảng thời gian dự đoán
-        beta_data = list(current_app.db.beta_values.find(
-            {'market_code': market_code, 'ticker': ticker},
-            {'_id': 0}
-        ))
+        beta_data = list(current_app.db.beta_values.find({'market_code': market_code, 'ticker': ticker},{'_id': 0}))
 
         # Nếu không có beta values phù hợp với khoảng thời gian, tính toán mới
         if not beta_data:
@@ -847,3 +844,54 @@ def get_stock_data_asset():
     except Exception as e:
         print(f"Error getting stock data with beta: {str(e)}")
         return jsonify({"error": f"Error getting stock data with beta: {str(e)}"}), 500
+
+@api.route('/data-analysis', methods=['POST'])
+def data_analysis():
+    if not current_app.db:
+        return jsonify({"error": "Database connection not available"}), 500
+
+    try:
+        # Get parameters from request
+        request_data = request.json or {}
+        market_code = request_data.get('market_code')
+        tickers = request_data.get('ticker')
+
+        if not market_code or not tickers or len(tickers) == 0:
+            return jsonify({"error": "Market code and ticker are required"}), 400
+
+        # Get stock data from MongoDB
+        stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code, 'Ticker': {"$in":[tickers]}}, {'_id': 0}))
+        if not stock_data:
+            return jsonify({"error": "No stock data available for analysis"}), 404
+
+        # Convert to DataFrame
+        stock_df = pd.DataFrame(stock_data)
+
+        # Normalize index codes - handle different naming conventions
+        # Map HSX or HOSE to VNIndex, HNX to HNXIndex
+        code_mapping = {
+            'HSX': 'VNINDEX',
+            'HOSE': 'VNINDEX',
+            'HNX': 'HNXIndex',
+            'UPCOM': 'UpcomIndex',
+            'Upcom': 'UpcomIndex',
+        }
+
+        mc = "HSX" if market_code == "HOSE" else market_code
+        market_data = list(current_app.db.market_index_data.find({'MarketCode': mc, 'IndexCode': code_mapping[mc]}, {'_id': 0}))
+
+        # Convert to DataFrame
+        market_df = pd.DataFrame(market_data)
+
+        # Lấy giá trị beta phù hợp với khoảng thời gian dự đoán
+        beta_values = calculate_all_stock_betas(stock_df, market_df, days_to_predict=10)
+
+        analysis_result = analyze_stocks_with_svm(stock_df, beta_values, days_to_predict=5)
+
+        return jsonify(analysis_result)
+
+    except Exception as e:
+        print(f"Error performing SVM analysis: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Error performing SVM analysis: {str(e)}"}), 500
