@@ -15,6 +15,7 @@ function AssetReport({ onClose, onMenuChange }) {
   }, []);
 
   const fetchMarketCodes = async () => {
+    setLoading(true);
     setError('');
     fetch('http://localhost:5001/api/market-code')
         .then(response => response.json())
@@ -25,27 +26,32 @@ function AssetReport({ onClose, onMenuChange }) {
         })
         .catch(err => {
           setError('Error filtering data: ' + err.message);
+          setLoading(false);
         });
   };
 
   const filterByMarketCode = () => {
     setError('');
+    setLoading(true);
     if (!selectedMarketCode) {
       // If no market code is selected, clear data
       setAssetData([]);
+      setLoading(false);
       return;
     }
     
     // Filter the data by selected market code
-    fetch('http://localhost:5001/api/stock-data-with-beta?market_code=' + selectedMarketCode)
+    fetch('http://localhost:5001/api/stock-data-asset?market_code=' + selectedMarketCode)
       .then(response => response.json())
       .then(data => {
         if (data) {
           setAssetData(data);
         }
+        setLoading(false);
       })
       .catch(err => {
         setError('Error filtering data: ' + err.message);
+        setLoading(false);
       });
   };
 
@@ -152,7 +158,7 @@ function AssetReport({ onClose, onMenuChange }) {
                         <td className={asset.ProfitLossPercent >= 0 ? 'profit' : 'loss'}>
                           {asset.ProfitLossPercent.toFixed(2)}%
                         </td>
-                        <td>{asset.weight !== "" ? asset.weight.toFixed(2) + "%" : 'N/A'}</td>
+                        <td>{asset.Weight !== "" ? asset.Weight.toFixed(2) + "%" : 'N/A'}</td>
                       </tr>
                     ))}
                   </tbody>

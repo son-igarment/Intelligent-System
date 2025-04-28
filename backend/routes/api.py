@@ -679,20 +679,6 @@ def get_stock_data_with_beta():
         # Get beta values
         beta_values = list(current_app.db.beta_values.find({'market_code': market_code}, {'_id': 0}))
 
-        # Get svm analyses values
-        svm_values = list(current_app.db.svm_analyses.find({'market_code': market_code}, {'_id': 0}))
-
-        # Create a dictionary for quick lookup of beta values
-        # beta_dict = {}
-        # for beta in beta_values:
-        #     # Create a key using market_code and ticker
-        #     if 'market_code' in beta and 'ticker' in beta:
-        #         key = f"{beta['market_code']}:{beta['ticker']}"
-        #         beta_dict[key] = beta
-        #     # Also try with stock_code if available
-        #     elif 'stock_code' in beta:
-        #         beta_dict[beta['stock_code']] = beta
-
         stock_df = pd.DataFrame(stock_data)
         date = max(stock_df['TradeDate'].values, key=lambda d: datetime.strptime(d, '%Y-%m-%d'))
         # stock_period = stock_data[stock_data['TradeDate'] == date]
@@ -751,20 +737,113 @@ def get_stock_data_with_beta():
                     stock_entry['beta'] = None
                     stock_entry['risk'] = 'unknown'
 
-                # Add SVM analysis if available
-                if any(market_code in svm.values() and ticker in svm.values() for svm in svm_values):
-                    for svm in svm_values:
-                        if market_code == svm['market_code'] and ticker == svm['ticker']:
-                            weight = float(svm['report']['weighted avg'].get('precision', 0))
-                            stock_entry['weight'] = weight * 100
-                            break
-                else:
-                    stock_entry['weight'] = ""
-
                 result.append(stock_entry)
         
         return jsonify(result)
     
+    except Exception as e:
+        print(f"Error getting stock data with beta: {str(e)}")
+        return jsonify({"error": f"Error getting stock data with beta: {str(e)}"}), 500
+
+# Endpoint to get stock data with calculations
+@api.route('/stock-data-asset', methods=['GET'])
+def get_stock_data_asset():
+    if not current_app.db:
+        return jsonify({"error": "Database connection not available"}), 500
+
+    try:
+
+        # Get parameters from the request
+        args = request.args
+        market_code = args['market_code']  # Market code (HNX, HOSE)
+
+        if not market_code:
+            return jsonify({"error": "Market code are required"}), 400
+
+        # Get stock data
+        stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code}, {'_id': 0}))
+        if not stock_data:
+            return jsonify({"error": "No stock data available"}), 404
+
+
+        stock_df = pd.DataFrame(stock_data)
+        date = max(stock_df['TradeDate'].values, key=lambda d: datetime.strptime(d, '%Y-%m-%d'))
+        # stock_period = stock_data[stock_data['TradeDate'] == date]
+
+        # Process stock data
+        nav_close_price = 0
+        nav_total_volume = 0
+        nav_open_price = 0
+        nav_current_price = 0
+        nav_profit_loss = 0
+        nav_profit_loss_percent = 0
+        nav_weight = 0
+        result = []
+        for stock in stock_data:
+            if 'MarketCode' not in stock or 'Ticker' not in stock:
+                continue
+
+            market_code = stock.get('MarketCode')
+            ticker = stock.get('Ticker')
+            stock_date = stock.get('TradeDate')
+
+            if stock_date != date:
+                continue
+
+            # Extract basic fields
+            close_price = float(stock.get('ClosePrice', 0))
+            nav_close_price += close_price
+            total_volume = float(stock.get('TotalVolume', 0))
+            nav_total_volume += total_volume
+            open_price = float(stock.get('OpenPrice', 0))
+            nav_open_price += open_price
+
+            # Calculate derived fields
+            current_price = close_price
+            nav_current_price += current_price
+            profit_loss = current_price - open_price
+            nav_profit_loss += profit_loss
+            profit_loss_percent = 0
+            if open_price > 0:
+                profit_loss_percent = (profit_loss / open_price) * 100
+            nav_profit_loss_percent += profit_loss_percent
+
+
+            # Prepare stock entry
+            stock_entry = {
+                'MarketCode': market_code,
+                'Ticker': ticker,
+                'ClosePrice': close_price,
+                'TotalVolume': total_volume,
+                'OpenPrice': open_price,
+                'CurrentPrice': current_price,
+                'ProfitLoss': profit_loss,
+                'ProfitLossPercent': profit_loss_percent
+            }
+
+            result.append(stock_entry)
+
+        nav_entry = {
+            'MarketCode': market_code,
+            'Ticker': 'NAV',
+            'ClosePrice': nav_close_price,
+            'TotalVolume': nav_total_volume,
+            'OpenPrice': nav_open_price,
+            'CurrentPrice': nav_current_price,
+            'ProfitLoss': nav_profit_loss,
+            'ProfitLossPercent': nav_profit_loss_percent
+        }
+        result.append(nav_entry)
+
+        # Calculate Weight
+        for stock in result:
+            if stock['Ticker'] == 'NAV':
+                stock['Weight'] = 100
+            else:
+                stock['Weight'] = (stock['CurrentPrice'] / nav_current_price) * 100
+
+        return jsonify(result)
+
     except Exception as e:
         print(f"Error getting stock data with beta: {str(e)}")
         return jsonify({"error": f"Error getting stock data with beta: {str(e)}"}), 500
