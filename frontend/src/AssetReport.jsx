@@ -6,28 +6,13 @@ function AssetReport({ onClose, onMenuChange }) {
   
   const [assetData, setAssetData] = useState([]);
   const [marketCodes, setMarketCodes] = useState([]);
-  const [selectedMarketCode, setSelectedMarketCode] = useState(() => {
-    const savedMarketCode = sessionStorage.getItem('selectedMarketCode');
-    return savedMarketCode || '';
-  });
+  const [selectedMarketCode, setSelectedMarketCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     fetchMarketCodes();
   }, []);
-
-  useEffect(() => {
-    if (selectedMarketCode) {
-      filterByMarketCode();
-    }
-  }, [selectedMarketCode]);
-
-  useEffect(() => {
-    if (selectedMarketCode) {
-      sessionStorage.setItem('selectedMarketCode', selectedMarketCode);
-    }
-  }, [selectedMarketCode]);
 
   const fetchMarketCodes = async () => {
     setError('');
@@ -45,11 +30,9 @@ function AssetReport({ onClose, onMenuChange }) {
 
   const filterByMarketCode = () => {
     setError('');
-    setLoading(true);
     if (!selectedMarketCode) {
       // If no market code is selected, clear data
       setAssetData([]);
-      setLoading(false);
       return;
     }
     
@@ -60,17 +43,10 @@ function AssetReport({ onClose, onMenuChange }) {
         if (data) {
           setAssetData(data);
         }
-        setLoading(false);
       })
       .catch(err => {
         setError('Error filtering data: ' + err.message);
-        setLoading(false);
       });
-  };
-
-  const handleMarketCodeChange = (e) => {
-    const newMarketCode = e.target.value;
-    setSelectedMarketCode(newMarketCode);
   };
 
   return (
@@ -124,7 +100,7 @@ function AssetReport({ onClose, onMenuChange }) {
               <div className="filter-controls">
                 <select 
                   value={selectedMarketCode}
-                  onChange={handleMarketCodeChange}
+                  onChange={(e) => setSelectedMarketCode(e.target.value)}
                   className="market-code-select"
                 >
                   <option value="">-- Select Market Code --</option>
