@@ -288,7 +288,7 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
   const [latestAnalysis, setLatestAnalysis] = useState(null);
   const [selectedStock, setSelectedStock] = useState('');
   const [selectedTickers, setSelectedTickers] = useState([]);
-  const [activeTab, setActiveTab] = useState('matrix'); // Default to matrix tab
+  const [activeTab, setActiveTab] = useState('matrix'); 
 
   // Fetch stocks and tickers on component load
   useEffect(() => {
@@ -675,6 +675,55 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
                         {activeTab === 'confidence' && latestAnalysis.predictions && (
                           <ConfidenceDistribution predictions={latestAnalysis.predictions} />
                         )}
+                      </div>
+                      
+                      {/* Always show Results Table */}
+                      <div className="beta-results-table" style={{ marginTop: '20px' }}>
+                        <h4 style={{ marginBottom: '15px', color: '#e8eaed' }}>Bảng kết quả dự đoán</h4>
+                        <table className="beta-table">
+                          <thead>
+                            <tr>
+                              <th>Mã CK</th>
+                              <th>Xu hướng</th>
+                              <th>Đề xuất</th>
+                              <th>Độ tin cậy</th>
+                              <th>Hệ số Beta</th>
+                              <th>Đánh giá Beta</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {latestAnalysis.predictions.map((prediction, index) => (
+                              <tr key={index}>
+                                <td>{prediction.stock_code}</td>
+                                <td style={getPredictionStyle(prediction.signal)}>
+                                  {prediction.prediction_label}
+                                </td>
+                                <td>
+                                  <div className="recommendation-badge" style={getPredictionStyle(prediction.signal)}>
+                                    {prediction.signal === 'strong_buy' ? 'MUA' : 
+                                    prediction.signal === 'strong_sell' ? 'BÁN' : 'THEO DÕI'}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="confidence-bar-container">
+                                    <div 
+                                      className="confidence-bar" 
+                                      style={{ 
+                                        width: `${prediction.confidence ? prediction.confidence * 100 : 0}%`,
+                                        backgroundColor: getConfidenceBackground(prediction.confidence)
+                                      }}
+                                    ></div>
+                                    <span className="confidence-value">{formatConfidence(prediction.confidence)}</span>
+                                  </div>
+                                </td>
+                                <td style={{ color: getBetaColor(prediction.beta) }}>
+                                  {prediction.beta ? prediction.beta.toFixed(4) : 'N/A'}
+                                </td>
+                                <td>{prediction.beta_interpretation || 'N/A'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                       
                       <div className="model-info-section">
