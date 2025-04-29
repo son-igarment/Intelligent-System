@@ -1,5 +1,7 @@
 import numpy as np
 from flask import Blueprint, jsonify, request, current_app
+from pandas import DataFrame
+
 from models.item import create_item_model, validate_item
 import pandas as pd
 from datetime import datetime
@@ -860,12 +862,17 @@ def data_analysis():
             return jsonify({"error": "Market code and ticker are required"}), 400
 
         # Get stock data from MongoDB
-        stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code, 'Ticker': {"$in":[tickers]}}, {'_id': 0}))
+        stock_data = list(current_app.db.stock_data.find({'MarketCode': market_code}, {'_id': 0}))
         if not stock_data:
             return jsonify({"error": "No stock data available for analysis"}), 404
 
-        # Convert to DataFrame
-        stock_df = pd.DataFrame(stock_data)
+        stock_filter = list()
+        for ticker in tickers:
+            for stock in stock_data:
+                if stock['Ticker'] == ticker:
+                    stock_filter.append(stock)
+
+        stock_df = pd.DataFrame(stock_filter)
 
         # Normalize index codes - handle different naming conventions
         # Map HSX or HOSE to VNIndex, HNX to HNXIndex

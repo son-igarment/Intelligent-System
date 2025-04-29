@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AssetReport from './AssetReport';
 import AnalystTool from './AnalystTool';
-import DataImport from './DataImport';
 import BetaCalculation from './BetaCalculation';
 import SVMAnalysis from './SVMAnalysis';
 import MarketIndexView from './MarketIndexView';

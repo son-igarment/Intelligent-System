@@ -1,25 +1,24 @@
 import React, { useState } from 'react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import ResearchLogin from './ResearchLogin';
+import SVMDataAnalysis from './SVMDataAnalysis';
 import './App.css';
 
-function DataImport({ onClose, onMenuChange }) {
+function DataImport({ onClose }) {
   const currentDate = "2025-04-29";
   const [importedData, setImportedData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [fileName, setFileName] = useState("");
-  const [showResearchLogin, setShowResearchLogin] = useState(false);
-
-  // Handler for user icon click
-  const handleUserIconClick = () => {
-    setShowResearchLogin(true);
+  const [activeMenu, setActiveMenu] = useState('import');
+  
+  const handleMenuChange = (menuItem) => {
+    setActiveMenu(menuItem);
   };
-
-  if (showResearchLogin) {
-    return <ResearchLogin onGoBack={() => setShowResearchLogin(false)} />;
+  
+  if (activeMenu === 'analysis') {
+    return <SVMDataAnalysis onClose={onClose} onMenuChange={handleMenuChange} />;
   }
 
   // Xử lý import file CSV
@@ -52,50 +51,6 @@ function DataImport({ onClose, onMenuChange }) {
         setLoading(false);
       }
     });
-  };
-
-  // Xử lý import file Excel
-  const handleExcelImport = (e) => {
-    setLoading(true);
-    setError("");
-    setSuccess(false);
-    
-    const file = e.target.files[0];
-    if (!file) {
-      setLoading(false);
-      return;
-    }
-    
-    setFileName(file.name);
-    
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      try {
-        const data = e.target.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        
-        if (jsonData && jsonData.length > 0) {
-          setImportedData(jsonData);
-          sendDataToBackend(jsonData);
-        } else {
-          setError("Không thể đọc dữ liệu từ file Excel.");
-        }
-      } catch (err) {
-        setError(`Lỗi khi xử lý file Excel: ${err.message}`);
-      }
-      setLoading(false);
-    };
-    
-    reader.onerror = () => {
-      setError("Lỗi khi đọc file");
-      setLoading(false);
-    };
-    
-    reader.readAsBinaryString(file);
   };
 
   // Xử lý import file chỉ số thị trường (Market Index)
@@ -179,7 +134,7 @@ function DataImport({ onClose, onMenuChange }) {
         },
         body: JSON.stringify({ data })
       });
-      
+
       const result = await response.json();
       if (response.ok) {
         setSuccess(true);
@@ -187,7 +142,7 @@ function DataImport({ onClose, onMenuChange }) {
       } else {
         setError(result.error || "Lỗi khi lưu dữ liệu");
       }
-      
+
     } catch (err) {
       setError(`Lỗi khi gửi dữ liệu: ${err.message}`);
     } finally {
@@ -207,7 +162,7 @@ function DataImport({ onClose, onMenuChange }) {
         },
         body: JSON.stringify({ data })
       });
-      
+
       const result = await response.json();
       if (response.ok) {
         setSuccess(true);
@@ -215,7 +170,7 @@ function DataImport({ onClose, onMenuChange }) {
       } else {
         setError(result.error || "Lỗi khi lưu dữ liệu VNIndex");
       }
-      
+
     } catch (err) {
       setError(`Lỗi khi gửi dữ liệu VNIndex: ${err.message}`);
     } finally {
@@ -228,10 +183,10 @@ function DataImport({ onClose, onMenuChange }) {
     try {
       setLoading(true);
       setError("");
-      
+
       const response = await fetch('http://localhost:5001/api/stock-data');
       const data = await response.json();
-      
+
       if (response.ok && data.length > 0) {
         setImportedData(data);
         alert(`Đã tải ${data.length} bản ghi từ MongoDB`);
@@ -245,42 +200,13 @@ function DataImport({ onClose, onMenuChange }) {
     }
   };
 
-  // Tính toán Beta và train SVM
-  const handleCalculate = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      
-      const response = await fetch('http://localhost:5001/api/calculate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({})
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok) {
-        setSuccess(true);
-        alert(`Tính toán thành công! Beta và SVM đã được cập nhật.`);
-      } else {
-        setError(result.error || "Lỗi khi tính toán");
-      }
-    } catch (err) {
-      setError(`Lỗi khi tính toán: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <span>Fund management iPlatform</span>
+        <span>Research iPlatform</span>
         <div className="header-controls">
-          <button className="user-icon-btn" onClick={handleUserIconClick}>
-            <i className="fas fa-user">👤</i>
+          <button className="user-icon-btn" onClick={() => {}}>
+         
           </button>
           <button className="close-btn" onClick={onClose}>✕</button>
         </div>
@@ -290,24 +216,13 @@ function DataImport({ onClose, onMenuChange }) {
         {/* Sidebar Menu */}
         <div className="dashboard-sidebar">
           <div className="sidebar-header">
-            <div>Fund management department</div>
+            <div>Research department</div>
             <div className="date-info">Current date: {currentDate}</div>
           </div>
           
-          <div className="sidebar-item" onClick={() => onMenuChange('dashboard')}>
-            Dashboard
-          </div>
-        
-          <div className="sidebar-item" onClick={() => onMenuChange('report')}>
-            Assets Report
-          </div>
 
-          <div className="sidebar-item" onClick={() => onMenuChange('beta')}>
-            Beta Calculation
-          </div>
-
-          <div className="sidebar-item" onClick={() => onMenuChange('svm')}>
-            SVM Analysis
+          <div className="sidebar-item" onClick={() => handleMenuChange('analysis')}>
+           SVM Data Analysis
           </div>
           
           <div className="sidebar-item active">
@@ -319,7 +234,7 @@ function DataImport({ onClose, onMenuChange }) {
         <div className="dashboard-main">
           <div className="report-container">
             <div className="report-header">
-              <h2 className="report-title">Data Import for Analysis</h2>
+              <h2 className="report-title">Data Import</h2>
               
               <div className="report-dates">
                 <div>Import date: <strong>{currentDate}</strong></div>
@@ -329,11 +244,11 @@ function DataImport({ onClose, onMenuChange }) {
             {/* Import Form */}
             <div className="import-form-container">
               <div className="import-section">
-                <h3 className="import-title">Nhập dữ liệu phân tích</h3>
+                <h3 className="import-title">Nhập dữ liệu</h3>
                 
                 <div className="import-description">
-                  <p>Hãy chọn tệp dữ liệu dạng CSV hoặc Excel để nhập vào hệ thống.</p>
-                  <p>Dữ liệu sẽ được lưu vào cơ sở dữ liệu và sử dụng để tính toán chỉ số Beta và huấn luyện mô hình SVM.</p>
+                  <p>Hãy chọn tệp dữ liệu dạng CSV hoặc Excel để nhập vào hệ thống .</p>
+                  <p>Dữ liệu sẽ được lưu vào cơ sở dữ liệu và sử dụng để phân tích thị trường và tạo báo cáo .</p>
                 </div>
                 
                 <div className="import-options">
@@ -363,13 +278,13 @@ function DataImport({ onClose, onMenuChange }) {
 
                 <div className="import-actions">
                   <button className="view-data-btn" onClick={fetchDataFromBackend}>
-                    Xem dữ liệu đã lưu trong MongoDB
+                    Xem dữ liệu  đã lưu trong MongoDB
                   </button>
                 </div>
                 
                 {loading && (
                   <div className="loading-indicator">
-                    <p>Đang xử lý dữ liệu...</p>
+                    <p>Đang xử lý dữ liệu ...</p>
                   </div>
                 )}
                 
@@ -381,13 +296,13 @@ function DataImport({ onClose, onMenuChange }) {
                 
                 {success && (
                   <div className="success-message">
-                    <p>Dữ liệu đã được nhập thành công từ file: {fileName}</p>
+                    <p>Dữ liệu  đã được nhập thành công từ file: {fileName}</p>
                   </div>
                 )}
                 
                 {importedData.length > 0 && (
                   <div className="data-preview">
-                    <h4>Dữ liệu đã nhập ({importedData.length} dòng):</h4>
+                    <h4>Dữ liệu  đã nhập ({importedData.length} dòng):</h4>
                     <div className="preview-table-container">
                       <table className="preview-table">
                         <thead>
@@ -409,23 +324,10 @@ function DataImport({ onClose, onMenuChange }) {
                       </table>
                       {importedData.length > 5 && (
                         <div className="more-data-note">
-                          <p>Hiển thị 5/{importedData.length} dòng dữ liệu</p>
+                          <p>Hiển thị 5/{importedData.length} dòng dữ liệu </p>
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
-                
-                {importedData.length > 0 && (
-                  <div className="calculate-section">
-                    <h4>Tính toán chỉ số và huấn luyện mô hình</h4>
-                    <button 
-                      className="calculate-btn" 
-                      onClick={handleCalculate} 
-                      disabled={loading}
-                    >
-                      Tính Beta và Train SVM
-                    </button>
                   </div>
                 )}
               </div>
@@ -437,4 +339,4 @@ function DataImport({ onClose, onMenuChange }) {
   );
 }
 
-export default DataImport; 
+export default DataImport;

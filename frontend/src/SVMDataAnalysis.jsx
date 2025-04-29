@@ -19,7 +19,6 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
   // Fetch stocks and tickers on component load
   useEffect(() => {
     fetchStocksAndTickers();
-    fetchLatestAnalysis();
   }, []);
 
   function setSelectStock(value) {
@@ -74,46 +73,6 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
           .catch(err => {
             setError('Error filtering data: ' + err.message);
           });
-    } catch (err) {
-      setError(`Lỗi khi tải dữ liệu: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch latest SVM analysis - Updated with new API endpoint
-  const fetchLatestAnalysis = async () => {
-    try {
-      setLoading(true);
-      
-      // Build query parameters for market_code and ticker if selected
-      let queryParams = new URLSearchParams();
-      if (selectedStock) {
-        queryParams.append('market_code', selectedStock);
-      }
-      if (selectedTickers.length > 0) {
-        selectedTickers.forEach(ticker => {
-          queryParams.append('ticker', ticker);
-        });
-      }
-      
-      // Updated API endpoint
-      const url = queryParams.toString() 
-        ? `http://localhost:5001/api/data-analysis?${queryParams.toString()}`
-        : 'http://localhost:5001/api/data-analysis';
-      
-      const response = await fetch(url);
-      
-      if (response.ok) {
-        const data = await response.json();
-        setLatestAnalysis(data);
-      } else {
-        // If no analysis exists, don't show an error
-        if (response.status !== 404) {
-          const errorData = await response.json();
-          setError(errorData.error || 'Không thể lấy dữ liệu phân tích SVM');
-        }
-      }
     } catch (err) {
       setError(`Lỗi khi tải dữ liệu: ${err.message}`);
     } finally {
@@ -206,13 +165,6 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
     if (beta < 2) return 'orangered';
     return 'red';
   };
-
-  // Fetch latest analysis when stock or ticker changes
-  useEffect(() => {
-    if (selectedStock || selectedTickers.length > 0) {
-      fetchLatestAnalysis();
-    }
-  }, [selectedStock, selectedTickers]);
 
   return (
     <div className="dashboard-container">

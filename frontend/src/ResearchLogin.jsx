@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ForgotPassword from './ForgotPassword';
-import ResearchDataImport from './ResearchDataImport';
+import DataImport from './DataImport';
 import './App.css';
 
 function ResearchLogin({ onGoBack }) {
@@ -8,7 +8,7 @@ function ResearchLogin({ onGoBack }) {
   const [password, setPassword] = useState('123456');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetNotification, setResetNotification] = useState('');
-  const [showResearchDataImport, setShowResearchDataImport] = useState(false);
+  const [showDataImport, setShowDataImport] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [animateLogin, setAnimateLogin] = useState(false);
 
@@ -29,7 +29,7 @@ function ResearchLogin({ onGoBack }) {
     // Simulate API call delay
     setTimeout(() => {
       setIsLoading(false);
-      setShowResearchDataImport(true);
+      setShowDataImport(true);
     }, 800);
   };
 
@@ -52,8 +52,8 @@ function ResearchLogin({ onGoBack }) {
     }, 3000);
   };
 
-  const handleCloseResearchDataImport = () => {
-    setShowResearchDataImport(false);
+  const handleCloseDataImport = () => {
+    setShowDataImport(false);
   };
 
   const handleKeyPress = (e) => {
@@ -62,8 +62,8 @@ function ResearchLogin({ onGoBack }) {
     }
   };
 
-  if (showResearchDataImport) {
-    return <ResearchDataImport onClose={handleCloseResearchDataImport} />;
+  if (showDataImport) {
+    return <DataImport onClose={handleCloseDataImport} />;
   }
 
   if (showForgotPassword) {

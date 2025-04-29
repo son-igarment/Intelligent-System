@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Login from './ResearchLogin';
-import TrainingModel from './TrainingModel';
 import './App.css';
 
 function Research({ onClose }) {
