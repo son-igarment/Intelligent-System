@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import './App.css';
 
 function AnalystTool({ onClose, onMenuChange }) {
-  const currentDate = "2025-03-28";
+  const currentDate = "2025-04-29";
   const [selectedStock, setSelectedStock] = useState("XYZ - Công ty Cổ phần Tập đoàn XYZ");
   const [selectedPeriod, setSelectedPeriod] = useState("Year On Year");
   
@@ -93,7 +93,7 @@ function AnalystTool({ onClose, onMenuChange }) {
                 <span className="ai-agent">AI agent:</span> As prediction, the <span className="purple-text">XYZ</span> stock is not affected to market with <span className="red-text">90%</span> probability any longer. You can take profit or change to the new portfolio if possible, <span className="purple-text">my boss</span>.
               </div>
               <div className="ai-recommendation-item">
-                <span className="ai-agent">AI agent:</span> After closing market on 2025-03-28, the systematic risk of market can be occurred with <span className="red-text">90%</span> probability soon, <span className="purple-text">my boss</span>.
+                <span className="ai-agent">AI agent:</span> After closing market on 2025-04-29, the systematic risk of market can be occurred with <span className="red-text">90%</span> probability soon, <span className="purple-text">my boss</span>.
               </div>
             </div>
             

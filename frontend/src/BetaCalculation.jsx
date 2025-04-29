@@ -4,7 +4,7 @@ import './App.css';
 
 
 function BetaCalculation({ onClose, onMenuChange }) {
-  const currentDate = "2025-03-28";
+  const currentDate = "2025-04-29";
   const [stocks, setMarketCodes] = useState([]); // Initialize with fixed market codes
   const [tickers, setTickers] = useState([]);
   const [filteredTickers, setFilteredTickers] = useState([]);
@@ -286,7 +286,12 @@ function BetaCalculation({ onClose, onMenuChange }) {
     <div className="dashboard-container">
       <div className="dashboard-header">
         <span>Fund management iPlatform</span>
-        <button className="close-btn" onClick={onClose}>✕</button>
+        <div className="header-controls">
+          <button className="user-icon-btn" onClick={() => onMenuChange('dashboard')}>
+            <i className="fas fa-user">👤</i>
+          </button>
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
       </div>
       
       <div className="dashboard-content">

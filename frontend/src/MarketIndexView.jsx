@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 
 function MarketIndexView({ onClose, onMenuChange }) {
-  const currentDate = "2025-03-28";
+  const currentDate = "2025-04-29";
   const [marketData, setMarketData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

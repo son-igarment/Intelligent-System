@@ -28,8 +28,8 @@ function TrainingModel() {
       <div className="report-header">
         <h2 className="report-title">TRAINING MODEL REPORT</h2>
         <div className="report-dates">
-          <div>Report date: 2025-03-28.</div>
-          <div>Lastest update date: 2025-03-28.</div>
+          <div>Report date: 2025-04-29.</div>
+          <div>Lastest update date: 2025-04-29.</div>
         </div>
       </div>
       

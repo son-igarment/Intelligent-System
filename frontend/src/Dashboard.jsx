@@ -5,16 +5,18 @@ import DataImport from './DataImport';
 import BetaCalculation from './BetaCalculation';
 import SVMAnalysis from './SVMAnalysis';
 import MarketIndexView from './MarketIndexView';
+import ResearchLogin from './ResearchLogin';
 import './App.css';
 
 function Dashboard({ onClose }) {
-  const currentDate = "2025-03-28";
+  const currentDate = "2025-04-29";
   
   const [stockData, setStockData] = useState([]);
   const [marketCodes, setMarketCodes] = useState([]);
   const [selectedMarketCode, setSelectedMarketCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showResearchLogin, setShowResearchLogin] = useState(false);
 
   const [activeMenu, setActiveMenu] = useState('dashboard');
 
@@ -61,6 +63,14 @@ function Dashboard({ onClose }) {
     setActiveMenu(menuItem);
   };
 
+  const handleUserIconClick = () => {
+    setShowResearchLogin(true);
+  };
+
+  if (showResearchLogin) {
+    return <ResearchLogin onGoBack={() => setShowResearchLogin(false)} />;
+  }
+
   if (activeMenu === 'assets') {
     return <AssetReport onClose={onClose} onMenuChange={handleMenuChange} />;
   }
@@ -89,7 +99,12 @@ function Dashboard({ onClose }) {
     <div className="dashboard-container">
       <div className="dashboard-header">
         <span>Fund management iPlatform</span>
-        <button className="close-btn" onClick={onClose}>✕</button>
+        <div className="header-controls">
+          <button className="user-icon-btn" onClick={handleUserIconClick}>
+            <i className="fas fa-user">👤</i>
+          </button>
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
       </div>
       
       <div className="dashboard-content">

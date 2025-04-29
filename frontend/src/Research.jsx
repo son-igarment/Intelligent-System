@@ -51,7 +51,7 @@ function Research({ onClose }) {
         <div className="dashboard-sidebar research-sidebar">
           <div className="research-department-header">
             <div>Research and development department</div>
-            <div className="date-info">Current date: 2025-03-28</div>
+            <div className="date-info">Current date: 2025-04-29</div>
           </div>
           
           <div className={`sidebar-item ${activeMenu === 'dashboard' ? 'active' : ''}`}
@@ -82,8 +82,8 @@ function Research({ onClose }) {
               <div className="report-header">
                 <h2 className="report-title">SECURITY CLASSIFICATION</h2>
                 <div className="report-dates">
-                  <div>Report date: 2025-03-28.</div>
-                  <div>Lastest update date: 2025-03-28.</div>
+                  <div>Report date: 2025-04-29.</div>
+                  <div>Lastest update date: 2025-04-29.</div>
                 </div>
               </div>
               

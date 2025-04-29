@@ -1,18 +1,36 @@
-import React, { useState } from 'react';
-import ResearchForgotPassword from './ResearchForgotPassword';
+import React, { useState, useEffect } from 'react';
+import ForgotPassword from './ForgotPassword';
+import ResearchDataImport from './ResearchDataImport';
 import './App.css';
 
-function ResearchLogin({ onGoBack, onLoginSuccess }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+function ResearchLogin({ onGoBack }) {
+  const [username, setUsername] = useState('vietnk');
+  const [password, setPassword] = useState('123456');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetNotification, setResetNotification] = useState('');
+  const [showResearchDataImport, setShowResearchDataImport] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [animateLogin, setAnimateLogin] = useState(false);
+
+  useEffect(() => {
+    // Animate login box on mount
+    setTimeout(() => {
+      setAnimateLogin(true);
+    }, 100);
+  }, []);
 
   const handleLogin = () => {
-    // In a real app, this would validate the credentials
-    if (username.trim() !== '' && password.trim() !== '') {
-      onLoginSuccess();
+    if (username.trim() === '' || password.trim() === '') {
+      return;
     }
+    
+    setIsLoading(true);
+    
+    // Simulate API call delay
+    setTimeout(() => {
+      setIsLoading(false);
+      setShowResearchDataImport(true);
+    }, 800);
   };
 
   const handleForgotPasswordClick = (e) => {
@@ -31,54 +49,89 @@ function ResearchLogin({ onGoBack, onLoginSuccess }) {
     // Clear notification after 5 seconds
     setTimeout(() => {
       setResetNotification('');
-    }, 1000);
+    }, 3000);
   };
 
+  const handleCloseResearchDataImport = () => {
+    setShowResearchDataImport(false);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
+  };
+
+  if (showResearchDataImport) {
+    return <ResearchDataImport onClose={handleCloseResearchDataImport} />;
+  }
+
   if (showForgotPassword) {
-    return <ResearchForgotPassword onGoBack={handleBackFromForgot} onSendSuccess={handleResetSuccess} />;
+    return <ForgotPassword onGoBack={handleBackFromForgot} onSendSuccess={handleResetSuccess} />;
   }
 
   return (
     <div className="platform-container">
       <div className="platform-header">
-        <span>Fund management iPlatform</span>
+        <span>
+          <i className="fas fa-chart-line" style={{ marginRight: '10px' }}></i>
+          Data Analysis iPlatform
+        </span>
         <button className="close-btn" onClick={onGoBack}>✕</button>
       </div>
       
-      <div className="research-department-header">
-        <span>Research and development department</span>
+      <div className="fund-department-header">
+        <span>
+          <i className="fas fa-university" style={{ marginRight: '10px' }}></i>
+          Data Analysis department
+        </span>
       </div>
       
       <div className="login-container">
-        <div className="login-box">
-          <h2>Login</h2>
-          <p className="login-subtitle">Sign in to continue</p>
+        <div className={`login-box ${animateLogin ? 'login-box-animate' : ''}`}>
+          
+          <h2>Data Analysis Login</h2>
+          <p className="login-subtitle">Sign in to continue to Research Platform</p>
           
           {resetNotification && (
-            <div className="notification">
-              {resetNotification}
+            <div className="notification notification-success">
+              <i className="fas fa-check-circle"></i> {resetNotification}
             </div>
           )}
           
           <div className="login-form">
             <div className="form-group">
-              <label htmlFor="username">USERNAME</label>
-              <input 
-                type="text" 
-                id="username" 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
+              <label htmlFor="username">
+                <i className="fas fa-user"></i> USERNAME
+              </label>
+              <div className="input-with-icon">
+                <input 
+                  type="text" 
+                  id="username" 
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Enter research username"
+                  autoComplete="username"
+                />
+              </div>
             </div>
             
             <div className="form-group">
-              <label htmlFor="password">PASSWORD</label>
-              <input 
-                type="password" 
-                id="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <label htmlFor="password">
+                <i className="fas fa-key"></i> PASSWORD
+              </label>
+              <div className="input-with-icon">
+                <input 
+                  type="password" 
+                  id="password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Enter research password"
+                  autoComplete="current-password"
+                />
+              </div>
             </div>
             
             <div className="forgot-password">
@@ -87,9 +140,26 @@ function ResearchLogin({ onGoBack, onLoginSuccess }) {
             </div>
             
             <div className="login-buttons">
-              <button className="login-btn" onClick={handleLogin}>Login</button>
-              <button className="go-back-btn" onClick={onGoBack}>Go Back</button>
+              <button 
+                className={`login-btn ${isLoading ? 'loading' : ''}`} 
+                onClick={handleLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span><i className="fas fa-spinner fa-spin"></i> Logging in...</span>
+                ) : (
+                  <span><i className="fas fa-sign-in-alt"></i> Login</span>
+                )}
+              </button>
+              
+              <button className="go-back-btn" onClick={onGoBack}>
+                <i className="fas fa-times"></i> Exit
+              </button>
             </div>
+          </div>
+          
+          <div className="login-footer">
+            <p>© {new Date().getFullYear()} Data Analysis iPlatform</p>
           </div>
         </div>
       </div>

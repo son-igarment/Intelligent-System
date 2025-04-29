@@ -4,8 +4,8 @@ import Dashboard from './Dashboard';
 import './App.css';
 
 function Login({ onGoBack }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('son.pln');
+  const [password, setPassword] = useState('123456');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetNotification, setResetNotification] = useState('');
   const [showDashboard, setShowDashboard] = useState(false);
