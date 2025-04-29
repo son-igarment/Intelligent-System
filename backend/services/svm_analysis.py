@@ -189,7 +189,7 @@ def train_svm_model(X, y, days_to_predict=5):
 
     for kernel in kernels:
         for C in C_values:
-            model = SVC(kernel=kernel, C=C, gamma='scale', random_state=42, probability=True)
+            model = SVC(kernel=kernel, C=C, gamma='scale', random_state=42, probability=True, class_weight='balanced')
             model.fit(X_train_scaled, y_train)
 
             # Predict on test set
