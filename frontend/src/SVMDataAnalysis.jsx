@@ -236,26 +236,30 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
                         ))}
                       </select>
                       
-                      <div className="custom-dropdown">
-                        <div className="dropdown-selected">
-                          {selectedTickers.length > 0 
-                            ? `Đã chọn ${selectedTickers.length} mã` 
-                            : "-- Chọn ticker --"}
+                      <div className="ticker-selection">
+                        <div className="ticker-header">
+                          <span>Chọn ticker:</span>
+                          {filteredTickers.length > 0 && (
+                            <span className="ticker-counter">
+                              Đã chọn: {selectedTickers.length}/{filteredTickers.length}
+                            </span>
+                          )}
                         </div>
-                        <div className="dropdown-menu scrollable">
-                          {filteredTickers.map(ticker => (
-                            <div key={ticker} className="dropdown-item">
-                              <label className="checkbox-container">
+                        <div className="ticker-checkbox-list">
+                          {filteredTickers.length > 0 ? (
+                            filteredTickers.map(ticker => (
+                              <label key={ticker} className="ticker-checkbox">
                                 <input
                                   type="checkbox"
                                   checked={selectedTickers.includes(ticker)}
                                   onChange={() => handleTickerSelection(ticker)}
                                 />
-                                <span className="checkmark">☑️</span>
-                                {ticker}
+                                <span>{ticker}</span>
                               </label>
-                            </div>
-                          ))}
+                            ))
+                          ) : (
+                            <div className="no-tickers">Vui lòng chọn Market Code trước</div>
+                          )}
                         </div>
                       </div>
                     </div> 
@@ -287,12 +291,7 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
                 {/* Analysis Results */}
                 {latestAnalysis && latestAnalysis.predictions && (
                   <div className="results-section">
-                    <div className="results-summary">
-                      <div className="result-card">
-                        <h4>Độ chính xác</h4>
-                        <div className="result-value">{(latestAnalysis.accuracy * 100).toFixed(2)}%</div>
-                      </div>
-                      
+                    <div className="results-summary">                  
                       <div className="result-card">
                         <h4>Dự báo</h4>
                         <div className="result-value">{latestAnalysis.days_to_predict} ngày</div>
@@ -418,6 +417,76 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
           max-height: 75vh;
         }
         
+        /* Ticker selection styling */
+        .ticker-selection {
+          margin-top: 15px;
+          background-color: #333;
+          border-radius: 6px;
+          padding: 12px;
+        }
+        
+        .ticker-header {
+          display: flex;
+          justify-content: space-between;
+          color: #e0e0e0;
+          margin-bottom: 10px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid #444;
+          font-weight: bold;
+          cursor: pointer;
+          position: relative;
+        }
+        
+        .ticker-header:hover {
+          background-color: #3a3a3a;
+          border-radius: 4px;
+          padding-left: 5px;
+        }
+        
+        .ticker-counter {
+          color: #90caf9;
+          font-size: 0.9em;
+        }
+        
+        .ticker-expand-icon {
+          color: #90caf9;
+          margin-left: 10px;
+          font-size: 12px;
+        }
+        
+        .ticker-checkbox-list {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+          gap: 8px;
+          max-height: 350px;
+          overflow-y: auto;
+          padding-right: 5px;
+        }
+        
+        .ticker-checkbox {
+          display: flex;
+          align-items: center;
+          padding: 5px;
+          background-color: #2a2a2a;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+        
+        .ticker-checkbox:hover {
+          background-color: #3a3a3a;
+        }
+        
+        .ticker-checkbox input {
+          margin-right: 8px;
+        }
+        
+        .no-tickers {
+          color: #888;
+          font-style: italic;
+          padding: 10px 0;
+        }
+        
         @media (max-width: 1200px) {
           .split-layout-container {
             grid-template-columns: 1fr;
@@ -425,6 +494,10 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
           
           .left-panel, .right-panel {
             margin-bottom: 20px;
+          }
+          
+          .ticker-checkbox-list {
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
           }
         }
         
