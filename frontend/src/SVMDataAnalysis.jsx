@@ -113,12 +113,13 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
       
       if (response.ok) {
         setAnalysisResults(data);
+
         setLatestAnalysis({
           date: new Date().toLocaleString(),
           days_to_predict: parseInt(daysToPrediction),
-          accuracy: data.model_metrics.accuracy,
-          predictions: data.predictions,
-          use_beta: useBeta,
+          accuracy: data.data.model_metrics.accuracy,
+          predictions: data.data.predictions,
+          use_beta: data.data.beta_used,
           market_code: selectedStock,
           ticker: selectedTickers
         });
@@ -291,7 +292,11 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
                 {/* Analysis Results */}
                 {latestAnalysis && latestAnalysis.predictions && (
                   <div className="results-section">
-                    <div className="results-summary">                  
+                    <div className="results-summary">
+                      <div className="result-card">
+                        <h4>Độ chính xác</h4>
+                        <div className="result-value">{(latestAnalysis.accuracy * 100).toFixed(2)}%</div>
+                      </div>
                       <div className="result-card">
                         <h4>Dự báo</h4>
                         <div className="result-value">{latestAnalysis.days_to_predict} ngày</div>
