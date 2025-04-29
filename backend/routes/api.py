@@ -1,11 +1,12 @@
+import base64
+
 import numpy as np
 from flask import Blueprint, jsonify, request, current_app
 from models.item import create_item_model, validate_item
 import pandas as pd
 from datetime import datetime
 from services.beta_calculation import calculate_all_stock_betas, get_beta_for_stock, get_beta_portfolio
-from services.svm_analysis import analyze_stocks_with_svm
-from bson import ObjectId
+from services.svm_analysis import analyze_stocks_with_svm, plot_confusion_matrix, plot_confidence_distribution
 
 api = Blueprint('api', __name__)
 
@@ -895,7 +896,24 @@ def data_analysis():
 
         analysis_result = analyze_stocks_with_svm(stock_df, beta_values, days_to_predict=5)
 
-        return jsonify(analysis_result)
+        cm = np.array(analysis_result['model_metrics']['confusion_matrix'])
+        plot_confusion_matrix(cm)
+
+        plot_confidence_distribution(analysis_result['predictions'])
+
+        with open("confusion_matrix.png", "rb") as image_file:
+            confusion_matrix_encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+
+        with open("confidence_distribution.png", "rb") as image_file:
+            confidence_distribution_encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+
+        return_result = {
+            "confusion_matrix": confusion_matrix_encoded_string,
+            "confidence_distribution": confidence_distribution_encoded_string,
+            "data": analysis_result
+        }
+
+        return jsonify(return_result)
 
     except Exception as e:
         print(f"Error performing SVM analysis: {str(e)}")
