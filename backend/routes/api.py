@@ -1,7 +1,5 @@
 import numpy as np
 from flask import Blueprint, jsonify, request, current_app
-from pandas import DataFrame
-
 from models.item import create_item_model, validate_item
 import pandas as pd
 from datetime import datetime
@@ -249,6 +247,7 @@ def get_all_market_code():
         data = list(current_app.db.stock_data.find({}, {'_id': 0}))
 
         result = list(set(d.get('MarketCode') for d in data))
+        result.sort()
 
         return jsonify(result)
     except Exception as e:
@@ -272,6 +271,7 @@ def get_all_ticker():
         data = list(current_app.db.stock_data.find({'MarketCode': market_code}, {'_id': 0}))
 
         result = list(set(d.get('Ticker') for d in data))
+        result.sort()
 
         return jsonify(result)
     except Exception as e:
