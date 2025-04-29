@@ -15,6 +15,8 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
   const [latestAnalysis, setLatestAnalysis] = useState(null);
   const [selectedStock, setSelectedStock] = useState('');
   const [selectedTickers, setSelectedTickers] = useState([]);
+  const [confusionMatrix, setConfusionMatrix] = useState(null);
+  const [confidenceDistribution, setConfidenceDistribution] = useState(null);
 
   // Fetch stocks and tickers on component load
   useEffect(() => {
@@ -120,6 +122,15 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
           market_code: selectedStock,
           ticker: selectedTickers
         });
+        
+      
+        if (data.confusion_matrix) {
+          setConfusionMatrix(data.confusion_matrix);
+        }
+        if (data.confidence_distribution) {
+          setConfidenceDistribution(data.confidence_distribution);
+        }
+        
         alert(`Phân tích SVM hoàn tất với độ chính xác ${(data.model_metrics.accuracy * 100).toFixed(2)}%`);
       } else {
         setError(data.error || 'Lỗi khi thực hiện phân tích SVM');
@@ -205,68 +216,74 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
               </div>
             </div>
             
-            {/* Analysis Controls */}
-            <div className="beta-calculation-container">
-              <div className="calculation-section">
-                <h3 className="section-title">Phân tích dự đoán dữ liệu với SVM</h3>
-                
-                <div className="calculation-options">
-                  <div className="option-group">
-                    <select 
-                      value={selectedStock} 
-                      onChange={(e) => setSelectStock(e.target.value)}
-                      className="stock-select"
-                    >
-                      <option value="">-- Chọn market code * --</option>
-                      {stocks.map(stock => (
-                        <option key={stock} value={stock}>{stock}</option>
-                      ))}
-                    </select>
-                    
-                    <div className="custom-dropdown">
-                      <div className="dropdown-selected">
-                        {selectedTickers.length > 0 
-                          ? `Đã chọn ${selectedTickers.length} mã` 
-                          : "-- Chọn ticker --"}
-                      </div>
-                      <div className="dropdown-menu">
-                        {filteredTickers.map(ticker => (
-                          <div key={ticker} className="dropdown-item">
-                            <label className="checkbox-container">
-                              <input
-                                type="checkbox"
-                                checked={selectedTickers.includes(ticker)}
-                                onChange={() => handleTickerSelection(ticker)}
-                              />
-                              <span className="checkmark"></span>
-                              {ticker}
-                            </label>
-                          </div>
+            {/* Split Layout: Left for Inputs, Right for Results */}
+            <div className="split-layout-container">
+              {/* Left Panel: Inputs */}
+              <div className="left-panel">
+                <div className="calculation-section">
+                  <h3 className="section-title">Phân tích dự đoán dữ liệu với SVM</h3>
+                  
+                  <div className="calculation-options">
+                    <div className="option-group">
+                      <select 
+                        value={selectedStock} 
+                        onChange={(e) => setSelectStock(e.target.value)}
+                        className="stock-select"
+                      >
+                        <option value="">-- Chọn market code * --</option>
+                        {stocks.map(stock => (
+                          <option key={stock} value={stock}>{stock}</option>
                         ))}
+                      </select>
+                      
+                      <div className="custom-dropdown">
+                        <div className="dropdown-selected">
+                          {selectedTickers.length > 0 
+                            ? `Đã chọn ${selectedTickers.length} mã` 
+                            : "-- Chọn ticker --"}
+                        </div>
+                        <div className="dropdown-menu scrollable">
+                          {filteredTickers.map(ticker => (
+                            <div key={ticker} className="dropdown-item">
+                              <label className="checkbox-container">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTickers.includes(ticker)}
+                                  onChange={() => handleTickerSelection(ticker)}
+                                />
+                                <span className="checkmark">☑️</span>
+                                {ticker}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
                       </div>
+                    </div> 
+                    <button 
+                      className="calculate-btn" 
+                      onClick={runSVMAnalysis}
+                      disabled={loading || !selectedStock || selectedTickers.length === 0}
+                    >
+                      {loading ? 'Đang phân tích...' : 'Bắt đầu phân tích dữ liệu'}
+                    </button>
+                  </div>
+                  
+                  {error && (
+                    <div className="error-message">
+                      <p>{error}</p>
                     </div>
-                  </div> 
-                  <button 
-                    className="calculate-btn" 
-                    onClick={runSVMAnalysis}
-                    disabled={loading || !selectedStock || selectedTickers.length === 0}
-                  >
-                    {loading ? 'Đang phân tích...' : 'Bắt đầu phân tích dữ liệu'}
-                  </button>
+                  )}
+                  
+                  {loading && (
+                    <div className="loading-indicator">
+                      <p>Đang thực hiện phân tích SVM dữ liệu...</p>
+                    </div>
+                  )}
                 </div>
-                
-                {error && (
-                  <div className="error-message">
-                    <p>{error}</p>
-                  </div>
-                )}
-                
-                {loading && (
-                  <div className="loading-indicator">
-                    <p>Đang thực hiện phân tích SVM dữ liệu...</p>
-                  </div>
-                )}
-                
+              </div>
+              
+              {/* Bên phải biểu thị kết quả*/}
+              <div className="right-panel">
                 {/* Analysis Results */}
                 {latestAnalysis && latestAnalysis.predictions && (
                   <div className="results-section">
@@ -292,6 +309,39 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
                       </div>
                     </div>
                     
+                    {/* Biểu thị cho các ModelModel */}
+                    <div className="model-visualization">
+                      <h4 className="visualization-title">Phân tích mô hình SVM</h4>
+                      
+                      <div className="visualization-grid">
+                        {confusionMatrix && (
+                          <div className="visualization-card">
+                            <h5>Ma trận nhầm lẫn (Confusion Matrix)</h5>
+                            <div className="image-container">
+                              <img 
+                                src={`data:image/png;base64,${confusionMatrix}`} 
+                                alt="Confusion Matrix" 
+                                className="visualization-image"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        
+                        {confidenceDistribution && (
+                          <div className="visualization-card">
+                            <h5>Phân phối độ tin cậy (Confidence Distribution)</h5>
+                            <div className="image-container">
+                              <img 
+                                src={`data:image/png;base64,${confidenceDistribution}`} 
+                                alt="Confidence Distribution" 
+                                className="visualization-image"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
                     <h4 className="results-title">Dự đoán xu hướng giá {latestAnalysis.days_to_predict} ngày tới</h4>
                     
                     <div className="view-options">
@@ -311,53 +361,6 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
                           Xuất báo cáo
                         </button>
                       </div>
-                    </div>
-                    
-                    <div className="beta-results-table">
-                      <table className="beta-table">
-                        <thead>
-                          <tr>
-                            <th>Mã CK</th>
-                            <th>Xu hướng</th>
-                            <th>Đề xuất</th>
-                            <th>Độ tin cậy</th>
-                            <th>Hệ số Beta</th>
-                            <th>Đánh giá Beta</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {latestAnalysis.predictions.map((prediction, index) => (
-                            <tr key={index}>
-                              <td>{prediction.stock_code}</td>
-                              <td style={getPredictionStyle(prediction.signal)}>
-                                {prediction.prediction_label}
-                              </td>
-                              <td>
-                                <div className="recommendation-badge" style={getPredictionStyle(prediction.signal)}>
-                                  {prediction.signal === 'strong_buy' ? 'MUA' : 
-                                   prediction.signal === 'strong_sell' ? 'BÁN' : 'THEO DÕI'}
-                                </div>
-                              </td>
-                              <td>
-                                <div className="confidence-bar-container">
-                                  <div 
-                                    className="confidence-bar" 
-                                    style={{ 
-                                      width: `${prediction.confidence ? prediction.confidence * 100 : 0}%`,
-                                      backgroundColor: getConfidenceBackground(prediction.confidence)
-                                    }}
-                                  ></div>
-                                  <span className="confidence-value">{formatConfidence(prediction.confidence)}</span>
-                                </div>
-                              </td>
-                              <td style={{ color: getBetaColor(prediction.beta) }}>
-                                {prediction.beta ? prediction.beta.toFixed(4) : 'N/A'}
-                              </td>
-                              <td>{prediction.beta_interpretation || 'N/A'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
                     </div>
                     
                     <div className="model-info-section">
@@ -390,6 +393,111 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
           </div>
         </div>
       </div>
+      
+      <style jsx="true">{`
+        .split-layout-container {
+          display: grid;
+          grid-template-columns: 1fr 2fr;
+          gap: 20px;
+          margin-top: 20px;
+        }
+        
+        .left-panel {
+          background-color: #2a2a2a;
+          border-radius: 8px;
+          padding: 20px;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .right-panel {
+          background-color: #2a2a2a;
+          border-radius: 8px;
+          padding: 20px;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+          overflow-y: auto;
+          max-height: 75vh;
+        }
+        
+        @media (max-width: 1200px) {
+          .split-layout-container {
+            grid-template-columns: 1fr;
+          }
+          
+          .left-panel, .right-panel {
+            margin-bottom: 20px;
+          }
+        }
+        
+        .model-visualization {
+          margin: 20px 0;
+          background-color: #2a2a2a;
+          border-radius: 8px;
+          padding: 20px;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .visualization-title {
+          color: #e0e0e0;
+          margin-bottom: 15px;
+          font-size: 18px;
+          border-bottom: 1px solid #444;
+          padding-bottom: 10px;
+        }
+        
+        .visualization-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+          gap: 20px;
+        }
+        
+        .visualization-card {
+          background-color: #333;
+          border-radius: 6px;
+          padding: 15px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        }
+        
+        .visualization-card h5 {
+          color: #bbb;
+          margin-top: 0;
+          margin-bottom: 12px;
+          font-size: 16px;
+          font-weight: normal;
+        }
+        
+        .image-container {
+          display: flex;
+          justify-content: center;
+          background-color: #fff;
+          border-radius: 4px;
+          padding: 10px;
+          margin-top: 10px;
+        }
+        
+        .visualization-image {
+          max-width: 100%;
+          height: auto;
+          border-radius: 4px;
+        }
+        
+        @media print {
+          .model-visualization {
+            page-break-inside: avoid;
+            background-color: white !important;
+            box-shadow: none;
+          }
+          
+          .visualization-card {
+            background-color: white !important;
+            box-shadow: none;
+            border: 1px solid #ddd;
+          }
+          
+          .visualization-title, .visualization-card h5 {
+            color: black !important;
+          }
+        }
+      `}</style> 
     </div>
   );
 }
