@@ -318,9 +318,7 @@ function BetaCalculation({ onClose, onMenuChange }) {
             SVM Analysis
           </div>
 
-          <div className="sidebar-item" onClick={() => onMenuChange('import')}>
-            Data Import
-          </div>
+        
         </div>
         
         {/* Main Content */}

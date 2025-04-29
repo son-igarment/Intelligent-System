@@ -3,7 +3,7 @@ import ForgotPassword from './ForgotPassword';
 import Dashboard from './Dashboard';
 import './App.css';
 
-function Login({ onGoBack }) {
+function Login({ onGoBack, onShowResearchLogin }) {
   const [username, setUsername] = useState('son.pln');
   const [password, setPassword] = useState('123456');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -77,7 +77,12 @@ function Login({ onGoBack }) {
           <i className="fas fa-chart-line" style={{ marginRight: '10px' }}></i>
           Fund management iPlatform
         </span>
-        <button className="close-btn" onClick={onGoBack}>✕</button>
+        <div className="header-controls">
+          <button className="user-icon-btn" onClick={onShowResearchLogin} title="Switch to Research Platform">
+            <i className="fas fa-user">👤</i>
+          </button>
+          <button className="close-btn" onClick={onGoBack}>✕</button>
+        </div>
       </div>
       
       <div className="fund-department-header">

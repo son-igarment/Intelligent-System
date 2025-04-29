@@ -135,10 +135,7 @@ function Dashboard({ onClose }) {
             SVM Analysis
           </div>
           
-          <div className={`sidebar-item ${activeMenu === 'import' ? 'active' : ''}`}
-               onClick={() => handleMenuChange('import')}>
-            Data Import
-          </div>
+          
 
         </div>
         

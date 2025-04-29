@@ -841,10 +841,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
           <div className="sidebar-item active">
             SVM Analysis
           </div>
-          
-          <div className="sidebar-item" onClick={() => onMenuChange('import')}>
-            Data Import
-          </div>
+        
         </div>
         
         {/* Main Content */}

@@ -77,7 +77,9 @@ function ResearchLogin({ onGoBack }) {
           <i className="fas fa-chart-line" style={{ marginRight: '10px' }}></i>
           Data Analysis iPlatform
         </span>
-        <button className="close-btn" onClick={onGoBack}>✕</button>
+        <div className="header-controls">
+          <button className="close-btn" onClick={onGoBack}>✕</button>
+        </div>
       </div>
       
       <div className="fund-department-header">

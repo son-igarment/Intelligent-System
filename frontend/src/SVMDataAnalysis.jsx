@@ -14,7 +14,7 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
   const [analysisResults, setAnalysisResults] = useState(null);
   const [latestAnalysis, setLatestAnalysis] = useState(null);
   const [selectedStock, setSelectedStock] = useState('');
-  const [selectedTicker, setSelectedTicker] = useState('');
+  const [selectedTickers, setSelectedTickers] = useState([]);
 
   // Fetch stocks and tickers on component load
   useEffect(() => {
@@ -28,7 +28,7 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
       setLoading(true);
       setError('');
       // Use new API endpoint with data-analysis prefix
-      fetch('http://localhost:5001/api/data-analysis/ticker?market_code=' + value)
+      fetch('http://localhost:5001/api/ticker?market_code=' + value)
           .then(response => response.json())
           .then(data => {
             if (data) {
@@ -40,7 +40,7 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
             setError('Error filtering data: ' + err.message);
           });
 
-      setSelectedTicker(''); // Reset ticker selection when MarketCode changes
+      setSelectedTickers([]); // Reset ticker selections when MarketCode changes
     } catch (err) {
       setError(`Lỗi khi tải dữ liệu: ${err.message}`);
     } finally {
@@ -48,12 +48,23 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
     }
   }
 
+  // Handle multiple ticker selection
+  const handleTickerSelection = (ticker) => {
+    setSelectedTickers(prevSelected => {
+      if (prevSelected.includes(ticker)) {
+        return prevSelected.filter(t => t !== ticker);
+      } else {
+        return [...prevSelected, ticker];
+      }
+    });
+  };
+
   // Fetch available stocks and tickers - Updated with new API endpoint
   const fetchStocksAndTickers = async () => {
     try {
       setLoading(true);
       setError('');
-      fetch('http://localhost:5001/api/data-analysis/market-code')
+      fetch('http://localhost:5001/api/market-code')
           .then(response => response.json())
           .then(data => {
             if (data) {
@@ -80,14 +91,16 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
       if (selectedStock) {
         queryParams.append('market_code', selectedStock);
       }
-      if (selectedTicker) {
-        queryParams.append('ticker', selectedTicker);
+      if (selectedTickers.length > 0) {
+        selectedTickers.forEach(ticker => {
+          queryParams.append('ticker', ticker);
+        });
       }
       
       // Updated API endpoint
       const url = queryParams.toString() 
-        ? `http://localhost:5001/api/data-analysis/latest-svm-analysis?${queryParams.toString()}`
-        : 'http://localhost:5001/api/data-analysis/latest-svm-analysis';
+        ? `http://localhost:5001/api/data-analysis?${queryParams.toString()}`
+        : 'http://localhost:5001/api/data-analysis';
       
       const response = await fetch(url);
       
@@ -110,8 +123,8 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
 
   // Perform SVM analysis - Updated with new API endpoint
   const runSVMAnalysis = async () => {
-    if (!selectedStock || !selectedTicker) {
-      setError('Vui lòng chọn cả Market Code và Ticker để thực hiện phân tích');
+    if (!selectedStock || selectedTickers.length === 0) {
+      setError('Vui lòng chọn cả Market Code và ít nhất một Ticker để thực hiện phân tích');
       return;
     }
     
@@ -123,11 +136,11 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
         days_to_predict: parseInt(daysToPrediction),
         use_beta: useBeta,
         market_code: selectedStock,
-        ticker: selectedTicker
+        ticker: selectedTickers
       };
       
       // Updated API endpoint
-      const response = await fetch('http://localhost:5001/api/data-analysis/svm-analysis', {
+      const response = await fetch('http://localhost:5001/api/data-analysis', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -146,7 +159,7 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
           predictions: data.predictions,
           use_beta: useBeta,
           market_code: selectedStock,
-          ticker: selectedTicker
+          ticker: selectedTickers
         });
         alert(`Phân tích SVM hoàn tất với độ chính xác ${(data.model_metrics.accuracy * 100).toFixed(2)}%`);
       } else {
@@ -196,10 +209,10 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
 
   // Fetch latest analysis when stock or ticker changes
   useEffect(() => {
-    if (selectedStock || selectedTicker) {
+    if (selectedStock || selectedTickers.length > 0) {
       fetchLatestAnalysis();
     }
-  }, [selectedStock, selectedTicker]);
+  }, [selectedStock, selectedTickers]);
 
   return (
     <div className="dashboard-container">
@@ -258,22 +271,33 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
                       ))}
                     </select>
                     
-                    <select 
-                      value={selectedTicker} 
-                      onChange={(e) => setSelectedTicker(e.target.value)}
-                      className="ticker-select"
-                      disabled={!selectedStock}
-                    >
-                      <option value="">-- Chọn ticker * --</option>
-                      {filteredTickers.map(ticker => (
-                        <option key={ticker} value={ticker}>{ticker}</option>
-                      ))}
-                    </select>
+                    <div className="custom-dropdown">
+                      <div className="dropdown-selected">
+                        {selectedTickers.length > 0 
+                          ? `Đã chọn ${selectedTickers.length} mã` 
+                          : "-- Chọn ticker --"}
+                      </div>
+                      <div className="dropdown-menu">
+                        {filteredTickers.map(ticker => (
+                          <div key={ticker} className="dropdown-item">
+                            <label className="checkbox-container">
+                              <input
+                                type="checkbox"
+                                checked={selectedTickers.includes(ticker)}
+                                onChange={() => handleTickerSelection(ticker)}
+                              />
+                              <span className="checkmark"></span>
+                              {ticker}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div> 
                   <button 
                     className="calculate-btn" 
                     onClick={runSVMAnalysis}
-                    disabled={loading || !selectedStock || !selectedTicker}
+                    disabled={loading || !selectedStock || selectedTickers.length === 0}
                   >
                     {loading ? 'Đang phân tích...' : 'Bắt đầu phân tích dữ liệu'}
                   </button>
