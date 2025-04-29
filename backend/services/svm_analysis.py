@@ -4,7 +4,7 @@ from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-
+import matplotlib.pyplot as plt
 
 def prepare_features(stock_data, beta_values, days_to_predict=5):
     """
@@ -348,3 +348,49 @@ def analyze_stocks_with_svm(stock_data, beta_values, days_to_predict=5):
             "success": False,
             "error": str(e)
         }
+
+# Plot confusion matrix
+def plot_confusion_matrix(cm, class_names=['Giảm', 'Đi ngang', 'Tăng']):
+    plt.figure(figsize=(8, 6))
+    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title('Ma trận nhầm lẫn')
+    plt.colorbar()
+
+    tick_marks = np.arange(len(class_names))
+    plt.xticks(tick_marks, class_names, rotation=45)
+    plt.yticks(tick_marks, class_names)
+
+    # Add text annotations in each cell
+    thresh = cm.max() / 2
+    for i in range(len(class_names)):
+        for j in range(len(class_names)):
+            plt.text(j, i, format(cm[i, j], 'd'),
+                     ha="center", va="center",
+                     color="white" if cm[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('Nhãn thực tế')
+    plt.xlabel('Nhãn dự đoán')
+    plt.savefig('confusion_matrix.png')
+    plt.close()
+
+# Plot confidence distribution
+def plot_confidence_distribution(predictions):
+    confidences = [pred['confidence'] for pred in predictions]
+    labels = [int(pred['prediction']) + 1 for pred in predictions]  # Convert -1,0,1 to 0,1,2
+
+    plt.figure(figsize=(10, 6))
+
+    # Plot confidence distribution for each class
+    for class_idx, class_name in enumerate(['Giảm', 'Đi ngang', 'Tăng']):
+        class_confidences = [conf for conf, label in zip(confidences, labels) if label == class_idx]
+        if class_confidences:
+            plt.hist(class_confidences, alpha=0.5, bins=20, label=class_name)
+
+    plt.xlabel('Điểm tin cậy')
+    plt.ylabel('Tần suất')
+    plt.title('Phân phối điểm tin cậy theo nhóm dự đoán')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.savefig('confidence_distribution.png')
+    plt.close()
