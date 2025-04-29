@@ -6,6 +6,7 @@ function ResearchForgotPassword({ onGoBack, onSendSuccess }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // In a real app, this would send a reset link to the email
     if (email.trim() !== '') {
       onSendSuccess();
     }
