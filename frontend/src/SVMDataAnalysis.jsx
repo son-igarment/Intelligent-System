@@ -137,7 +137,7 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
         setError(data.error || 'Lỗi khi thực hiện phân tích SVM');
       }
     } catch (err) {
-      setError(`Lỗi khi thực hiện phân tích: ${err.message}`);
+      // setError(`Lỗi khi thực hiện phân tích: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -236,41 +236,40 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
                           <option key={stock} value={stock}>{stock}</option>
                         ))}
                       </select>
-                      
-                      <div className="ticker-selection">
-                        <div className="ticker-header">
-                          <span>Chọn ticker:</span>
-                          {filteredTickers.length > 0 && (
+                      <button
+                          className="calculate-btn"
+                          onClick={runSVMAnalysis}
+                          disabled={loading || !selectedStock || selectedTickers.length === 0}
+                      >
+                        {loading ? 'Đang phân tích...' : 'Phân tích'}
+                      </button>
+                    </div>
+                    <div className="ticker-selection">
+                      <div>
+                        <span>Chọn ticker: </span>
+                        {filteredTickers.length > 0 && (
                             <span className="ticker-counter">
                               Đã chọn: {selectedTickers.length}/{filteredTickers.length}
                             </span>
-                          )}
-                        </div>
-                        <div className="ticker-checkbox-list">
-                          {filteredTickers.length > 0 ? (
-                            filteredTickers.map(ticker => (
-                              <label key={ticker} className="ticker-checkbox">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedTickers.includes(ticker)}
-                                  onChange={() => handleTickerSelection(ticker)}
-                                />
-                                <span>{ticker}</span>
-                              </label>
-                            ))
-                          ) : (
-                            <div className="no-tickers">Vui lòng chọn Market Code trước</div>
-                          )}
-                        </div>
+                        )}
                       </div>
-                    </div> 
-                    <button 
-                      className="calculate-btn" 
-                      onClick={runSVMAnalysis}
-                      disabled={loading || !selectedStock || selectedTickers.length === 0}
-                    >
-                      {loading ? 'Đang phân tích...' : 'Bắt đầu phân tích dữ liệu'}
-                    </button>
+                      <div className="ticker-checkbox-list">
+                        {filteredTickers.length > 0 ? (
+                            filteredTickers.map(ticker => (
+                                <label key={ticker} className="ticker-checkbox">
+                                  <input
+                                      type="checkbox"
+                                      checked={selectedTickers.includes(ticker)}
+                                      onChange={() => handleTickerSelection(ticker)}
+                                  />
+                                  <span>{ticker}</span>
+                                </label>
+                            ))
+                        ) : (
+                            <div className="no-tickers">Vui lòng chọn Market Code trước</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   
                   {error && (
@@ -418,8 +417,6 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
           border-radius: 8px;
           padding: 20px;
           box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-          overflow-y: auto;
-          max-height: 75vh;
         }
         
         /* Ticker selection styling */
@@ -428,6 +425,7 @@ function SVMDataAnalysis({ onClose, onMenuChange }) {
           background-color: #333;
           border-radius: 6px;
           padding: 12px;
+          width: -webkit-fill-available;
         }
         
         .ticker-header {
