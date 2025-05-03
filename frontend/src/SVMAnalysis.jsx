@@ -170,48 +170,6 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
   };
 
   
-  const generateHistogramData = () => { 
-    const bins = 22; 
-    const binWidth = 10; 
-    const histogramData = Array(bins).fill(0);
-    
-    
-    const addToHistogram = (value) => {  
-      const binIndex = Math.floor((value + 3) * (bins / 7));
-      if (binIndex >= 0 && binIndex < bins) {
-        histogramData[binIndex]++;
-      }
-    };
-    
-    
-    predictions.forEach(prediction => {    
-      if (prediction.confidence) {
-        const normalizedConfidence = (prediction.confidence - 0.5) * 4;
-        addToHistogram(normalizedConfidence);
-      }
-      
-      
-      if (prediction.beta) {
-        const normalizedBeta = (prediction.beta - 1) * 1.5;
-        addToHistogram(normalizedBeta);
-      }
-      
-      
-    });
-    
-  
-    const maxBinValue = Math.max(...histogramData);
-    const scaledHistogram = histogramData.map(count => 
-      maxBinValue > 0 ? Math.round((count / maxBinValue) * 200) : 0
-    );
-    
-    return {
-      data: scaledHistogram,
-      binWidth
-    };
-  };
-
-  
   const generatePriceTrend = () => {
    
     const basePrice = 100;
@@ -246,7 +204,6 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
   
  
   const weeklyTrend = generatePredictionTrend();
-  const histogramData = generateHistogramData();
   const priceTrendData = predictions[0]?.price_trend || generatePriceTrend();
   
   const getTrendPoints = (trendData) => {
@@ -536,96 +493,6 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
           color: '#000'
         }}>
           Dự báo xu hướng giá trong {priceTrendData.length - 1} ngày tới dựa trên mô hình SVM
-        </div>
-      </div>
-
-      {/* Histogram Chart */}
-      <div style={{marginTop: '30px', border: '1px solid #ddd', borderRadius: '8px', padding: '15px'}}>
-        <h5 style={{textAlign: 'center', marginBottom: '15px', color: '#000'}}>Phân phối dữ liệu</h5>
-        <div style={{
-          height: '250px',
-          position: 'relative',
-          padding: '10px 0'
-        }}>
-          {/* Y-axis */}
-          <div style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 30,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            pointerEvents: 'none'
-          }}>
-            {[0, 1, 2, 3, 4, 5].map(i => (
-              <div key={i} style={{
-                borderBottom: i < 5 ? '1px dashed #ddd' : 'none',
-                height: '20%',
-                position: 'relative'
-              }}>
-                {i < 5 && (
-                  <span style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    fontSize: '11px',
-                    color: '#000'
-                  }}>
-                    {100 - i * 20}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-          
-          {/* Histogram */}
-          <svg width="100%" height="100%" style={{paddingLeft: '30px', paddingBottom: '20px'}}>
-            {/* X and Y axis */}
-            <line x1="0" y1="200" x2="400" y2="200" stroke="#000" strokeWidth="1" />
-            <line x1="0" y1="0" x2="0" y2="200" stroke="#000" strokeWidth="1" />
-            
-            {/* Histogram bars */}
-            {histogramData.data.map((height, index) => {
-              const width = histogramData.binWidth;
-              const x = index * width;
-              const y = 200 - height;
-              
-              return (
-                <rect 
-                  key={index}
-                  x={15 + x} 
-                  y={y} 
-                  width={width} 
-                  height={height} 
-                  fill="#1976D2" 
-                />
-              );
-            })}
-          </svg>
-          
-          {/* X-axis labels */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            padding: '0 30px',
-            marginTop: '5px'
-          }}>
-            {['-3', '-2', '-1', '0', '1', '2', '3', '4'].map((label, i) => (
-              <div key={i} style={{fontSize: '11px', color: '#000'}}>{label}</div>
-            ))}
-          </div>
-        </div>
-        
-        <div style={{
-          marginTop: '15px',
-          textAlign: 'center',
-          fontSize: '13px',
-          fontStyle: 'italic',
-          color: '#000'
-        }}>
-          Phân phối dữ liệu chuẩn hóa cho phân tích SVM
         </div>
       </div>
     </div>
