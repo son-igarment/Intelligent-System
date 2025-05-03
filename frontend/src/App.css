@@ -722,6 +722,11 @@ body {
   font-weight: bold;
 }
 
+.nav-ticker {
+  color: #00bbff;
+  font-weight: bold;
+}
+
 .profit {
   color: #00FF00;
   font-weight: bold;

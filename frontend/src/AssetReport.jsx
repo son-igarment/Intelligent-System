@@ -150,7 +150,9 @@ function AssetReport({ onClose, onMenuChange }) {
                     {assetData.map((asset, index) => (
                       <tr key={index}>
                         <td>{asset.MarketCode}</td>
-                        <td>{asset.Ticker}</td>
+                        <td className={asset.Ticker == 'NAV' ? 'nav-ticker' : ''}>
+                          {asset.Ticker}
+                        </td>
                         <td>{asset.ClosePrice.toFixed(2)}</td>
                         <td>{asset.TotalVolume.toFixed(0)}</td>
                         <td>{asset.OpenPrice.toFixed(2)}</td>
