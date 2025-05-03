@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-// For charts
 const ChartComponent = ({ predictions, formatConfidence }) => {
   if (!predictions || predictions.length === 0) return null;
   
@@ -120,9 +119,143 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
     };
   };
 
+  // Generate prediction trend data for weekly chart
+  const generatePredictionTrend = () => {
+    // Use real data or create simulated data based on distribution
+    // This simulates trend over weeks (current through 4 weeks)
+    const distribution = calculateDistribution();
+    
+    // Start with current distribution
+    const buyStart = distribution.buy.percent / 100;
+    const holdStart = distribution.hold.percent / 100;
+    const sellStart = distribution.sell.percent / 100;
+    
+    // Generate 5 points (current + 4 weeks) with slight variations
+    // but maintaining the trend direction
+    const weeks = 5;
+    const buyTrend = [];
+    const holdTrend = [];
+    const sellTrend = [];
+    
+    const getTrend = (start, isPositive) => {
+      const result = [];
+      let current = start;
+      result.push(current);
+      
+      for (let i = 1; i < weeks; i++) {
+        const change = (Math.random() * 0.05) * (isPositive ? 1 : -1);
+        current = Math.max(0, Math.min(1, current + change));
+        result.push(current);
+      }
+      
+      return result;
+    };
+    
+    
+    const buyPoints = getTrend(buyStart, true);
+    const sellPoints = getTrend(sellStart, false);
+    
+    
+    const holdPoints = buyPoints.map((buy, i) => {
+      const sell = sellPoints[i];
+      return Math.max(0, Math.min(1, 1 - buy - sell));
+    });
+    
+    return {
+      buy: buyPoints,
+      hold: holdPoints,
+      sell: sellPoints,
+      weeks: ['Hiện tại', 'Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4']
+    };
+  };
+
+  
+  const generateHistogramData = () => { 
+    const bins = 22; 
+    const binWidth = 10; 
+    const histogramData = Array(bins).fill(0);
+    
+    
+    const addToHistogram = (value) => {  
+      const binIndex = Math.floor((value + 3) * (bins / 7));
+      if (binIndex >= 0 && binIndex < bins) {
+        histogramData[binIndex]++;
+      }
+    };
+    
+    
+    predictions.forEach(prediction => {    
+      if (prediction.confidence) {
+        const normalizedConfidence = (prediction.confidence - 0.5) * 4;
+        addToHistogram(normalizedConfidence);
+      }
+      
+      
+      if (prediction.beta) {
+        const normalizedBeta = (prediction.beta - 1) * 1.5;
+        addToHistogram(normalizedBeta);
+      }
+      
+      
+    });
+    
+  
+    const maxBinValue = Math.max(...histogramData);
+    const scaledHistogram = histogramData.map(count => 
+      maxBinValue > 0 ? Math.round((count / maxBinValue) * 200) : 0
+    );
+    
+    return {
+      data: scaledHistogram,
+      binWidth
+    };
+  };
+
+  
+  const generatePriceTrend = () => {
+   
+    const basePrice = 100;
+    
+    
+    const days = 5;
+    const prices = [basePrice];
+    
+   
+    const distribution = calculateDistribution();
+    const trendDirection = distribution.buy.percent > distribution.sell.percent ? 1 : -1;
+    
+    for (let i = 1; i < days; i++) {
+      
+      const prevPrice = prices[i-1];
+      
+     
+      const changePct = (Math.random() * 0.03 + 0.01) * trendDirection;
+      const newPrice = prevPrice * (1 + changePct);
+      
+      
+      const noise = (Math.random() - 0.5) * 2;
+      prices.push(Math.round(newPrice + noise));
+    }
+    
+    return prices;
+  };
+
   const distribution = calculateDistribution();
   const buyPercentage = distribution.buy.percent;
   const holdPercentage = distribution.buy.percent + distribution.hold.percent;
+  
+ 
+  const weeklyTrend = generatePredictionTrend();
+  const histogramData = generateHistogramData();
+  const priceTrendData = predictions[0]?.price_trend || generatePriceTrend();
+  
+  const getTrendPoints = (trendData) => {
+    return trendData.map((value, index) => {
+      const x = (index / (trendData.length - 1)) * 400;
+      const y = 180 - (value * 180);
+      return `${x},${y}`;
+    }).join(' ');
+  };
 
   return (
     <div style={styles.chartContainer}>
@@ -221,7 +354,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
           <svg width="100%" height="100%" style={{paddingLeft: '30px'}}>
             {/* Buy line */}
             <polyline 
-              points="0,180 100,160 200,140 300,120 400,100" 
+              points={getTrendPoints(weeklyTrend.buy)} 
               style={{
                 fill: 'none',
                 stroke: '#00C853',
@@ -231,7 +364,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
             
             {/* Hold line */}
             <polyline 
-              points="0,160 100,170 200,160 300,150 400,140" 
+              points={getTrendPoints(weeklyTrend.hold)}
               style={{
                 fill: 'none',
                 stroke: '#FFC107',
@@ -241,7 +374,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
             
             {/* Sell line */}
             <polyline 
-              points="0,170 100,165 200,160 300,170 400,180" 
+              points={getTrendPoints(weeklyTrend.sell)}
               style={{
                 fill: 'none',
                 stroke: '#FF3D00',
@@ -250,13 +383,16 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
             />
             
             {/* Data points */}
-            {[0, 100, 200, 300, 400].map((x, i) => (
-              <React.Fragment key={i}>
-                <circle cx={x} cy={180 - i * 20} r="5" fill="#00C853" />
-                <circle cx={x} cy={[160, 170, 160, 150, 140][i]} r="5" fill="#FFC107" />
-                <circle cx={x} cy={[170, 165, 160, 170, 180][i]} r="5" fill="#FF3D00" />
-              </React.Fragment>
-            ))}
+            {weeklyTrend.buy.map((value, i) => {
+              const x = (i / (weeklyTrend.buy.length - 1)) * 400;
+              return (
+                <React.Fragment key={i}>
+                  <circle cx={x} cy={180 - (weeklyTrend.buy[i] * 180)} r="5" fill="#00C853" />
+                  <circle cx={x} cy={180 - (weeklyTrend.hold[i] * 180)} r="5" fill="#FFC107" />
+                  <circle cx={x} cy={180 - (weeklyTrend.sell[i] * 180)} r="5" fill="#FF3D00" />
+                </React.Fragment>
+              );
+            })}
           </svg>
           
           {/* X-axis labels */}
@@ -266,7 +402,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
             padding: '0 30px',
             marginTop: '5px'
           }}>
-            {['Hiện tại', 'Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4'].map((label, i) => (
+            {weeklyTrend.weeks.map((label, i) => (
               <div key={i} style={{fontSize: '11px', color: '#000'}}>{label}</div>
             ))}
           </div>
@@ -294,210 +430,114 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
         </div>
       </div>
 
-      {/* Price Trend Chart */}
-      {predictions.length > 0 && predictions[0].price_trend && (
-        <div style={{marginTop: '30px', border: '1px solid #ddd', borderRadius: '8px', padding: '15px'}}>
-          <h5 style={{textAlign: 'center', marginBottom: '15px', color: '#000'}}>Dự báo xu hướng giá</h5>
+      {/* Price Trend Chart - Use actual data if available */}
+      <div style={{marginTop: '30px', border: '1px solid #ddd', borderRadius: '8px', padding: '15px'}}>
+        <h5 style={{textAlign: 'center', marginBottom: '15px', color: '#000'}}>Dự báo xu hướng giá</h5>
+        <div style={{
+          height: '200px',
+          position: 'relative',
+          padding: '10px 0'
+        }}>
+          {/* Horizontal grid lines */}
           <div style={{
-            height: '200px',
-            position: 'relative',
-            padding: '10px 0'
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 20,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            pointerEvents: 'none'
           }}>
-            {/* Horizontal grid lines */}
-            <div style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              top: 0,
-              bottom: 20,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              pointerEvents: 'none'
-            }}>
-              {[0, 1, 2, 3, 4].map(i => (
-                <div key={i} style={{
-                  borderBottom: i < 4 ? '1px dashed #ddd' : 'none',
-                  height: '20%',
-                  position: 'relative'
-                }}>
-                  {i < 4 && (
-                    <span style={{
-                      position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      fontSize: '11px',
-                      color: '#000'
-                    }}>
-                      {Math.round(Math.max(...predictions[0].price_trend) - (i * (Math.max(...predictions[0].price_trend) - Math.min(...predictions[0].price_trend)) / 4))}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-            
-            {/* Line chart */}
-            <svg width="100%" height="100%" style={{paddingLeft: '30px'}}>
-              {/* Create points for the polyline */}
-              {(() => {
-                const maxPrice = Math.max(...predictions[0].price_trend);
-                const minPrice = Math.min(...predictions[0].price_trend);
-                const range = maxPrice - minPrice;
-                const points = predictions[0].price_trend.map((price, idx) => {
-                  const x = (idx / (predictions[0].price_trend.length - 1)) * 400;
-                  // Convert price to y coordinate (180 is bottom, 0 is top)
-                  const y = 180 - ((price - minPrice) / range) * 160;
-                  return `${x},${y}`;
-                }).join(' ');
-                
-                return (
-                  <polyline 
-                    points={points}
-                    style={{
-                      fill: 'none',
-                      stroke: '#4a6da7',
-                      strokeWidth: 3
-                    }}
-                  />
-                );
-              })()}
-              
-              {/* Data points */}
-              {predictions[0].price_trend.map((price, idx) => {
-                const maxPrice = Math.max(...predictions[0].price_trend);
-                const minPrice = Math.min(...predictions[0].price_trend);
-                const range = maxPrice - minPrice;
-                const x = (idx / (predictions[0].price_trend.length - 1)) * 400;
+            {[0, 1, 2, 3, 4].map(i => (
+              <div key={i} style={{
+                borderBottom: i < 4 ? '1px dashed #ddd' : 'none',
+                height: '20%',
+                position: 'relative'
+              }}>
+                {i < 4 && (
+                  <span style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    fontSize: '11px',
+                    color: '#000'
+                  }}>
+                    {Math.round(Math.max(...priceTrendData) - (i * (Math.max(...priceTrendData) - Math.min(...priceTrendData)) / 4))}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+          
+          {/* Line chart */}
+          <svg width="100%" height="100%" style={{paddingLeft: '30px'}}>
+            {/* Create points for the polyline */}
+            {(() => {
+              const maxPrice = Math.max(...priceTrendData);
+              const minPrice = Math.min(...priceTrendData);
+              const range = maxPrice - minPrice;
+              const points = priceTrendData.map((price, idx) => {
+                const x = (idx / (priceTrendData.length - 1)) * 400;
                 const y = 180 - ((price - minPrice) / range) * 160;
-                
-                return (
-                  <g key={idx}>
-                    <circle cx={x} cy={y} r="5" fill="#4a6da7" />
-                    <text x={x} y={y-10} fontSize="11" textAnchor="middle" fill="#000">{price.toLocaleString()}</text>
-                  </g>
-                );
-              })}
-            </svg>
-            
-            {/* X-axis labels */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              padding: '0 30px',
-              marginTop: '5px'
-            }}>
-              {predictions[0].price_trend.map((_, idx) => (
-                <div key={idx} style={{fontSize: '11px', color: '#000'}}>
-                  {idx === 0 ? 'Hiện tại' : `Ngày ${idx}`}
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <div style={{
-            marginTop: '15px',
-            textAlign: 'center',
-            fontSize: '13px',
-            fontStyle: 'italic',
-            color: '#000'
-          }}>
-            Dự báo xu hướng giá trong {predictions[0].price_trend.length - 1} ngày tới dựa trên mô hình SVM
-          </div>
-        </div>
-      )}
-
-      {/* Price Trend Chart - Simulated version */}
-      {(!predictions.length || !predictions[0].price_trend) && (
-        <div style={{marginTop: '30px', border: '1px solid #ddd', borderRadius: '8px', padding: '15px'}}>
-          <h5 style={{textAlign: 'center', marginBottom: '15px', color: '#000'}}>Dự báo xu hướng giá</h5>
-          <div style={{
-            height: '200px',
-            position: 'relative',
-            padding: '10px 0'
-          }}>
-            {/* Horizontal grid lines */}
-            <div style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              top: 0,
-              bottom: 20,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              pointerEvents: 'none'
-            }}>
-              {[0, 1, 2, 3, 4].map(i => (
-                <div key={i} style={{
-                  borderBottom: i < 4 ? '1px dashed #ddd' : 'none',
-                  height: '20%',
-                  position: 'relative'
-                }}>
-                  {i < 4 && (
-                    <span style={{
-                      position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      fontSize: '11px',
-                      color: '#000'
-                    }}>
-                      {115 - (i * 5)}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-            
-            {/* Line chart */}
-            <svg width="100%" height="100%" style={{paddingLeft: '30px'}}>
-              {/* Simulated data line */}
-              <polyline 
-                points="0,80 100,60 200,40 300,48 400,20" 
-                style={{
-                  fill: 'none',
-                  stroke: '#4a6da7',
-                  strokeWidth: 3
-                }}
-              />
+                return `${x},${y}`;
+              }).join(' ');
               
-              {/* Data points with simulated values */}
-              {[100, 105, 110, 108, 115].map((price, idx) => {
-                const x = (idx / 4) * 400;
-                const y = 180 - ((price - 100) / 15) * 160;
-                
-                return (
-                  <g key={idx}>
-                    <circle cx={x} cy={y} r="5" fill="#4a6da7" />
-                    <text x={x} y={y-10} fontSize="11" textAnchor="middle" fill="#000">{price.toLocaleString()}</text>
-                  </g>
-                );
-              })}
-            </svg>
+              return (
+                <polyline 
+                  points={points}
+                  style={{
+                    fill: 'none',
+                    stroke: '#4a6da7',
+                    strokeWidth: 3
+                  }}
+                />
+              );
+            })()}
             
-            {/* X-axis labels */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              padding: '0 30px',
-              marginTop: '5px'
-            }}>
-              {['Hiện tại', 'Ngày 1', 'Ngày 2', 'Ngày 3', 'Ngày 4'].map((label, i) => (
-                <div key={i} style={{fontSize: '11px', color: '#000'}}>{label}</div>
-              ))}
-            </div>
-          </div>
+            {/* Data points */}
+            {priceTrendData.map((price, idx) => {
+              const maxPrice = Math.max(...priceTrendData);
+              const minPrice = Math.min(...priceTrendData);
+              const range = maxPrice - minPrice;
+              const x = (idx / (priceTrendData.length - 1)) * 400;
+              const y = 180 - ((price - minPrice) / range) * 160;
+              
+              return (
+                <g key={idx}>
+                  <circle cx={x} cy={y} r="5" fill="#4a6da7" />
+                  <text x={x} y={y-10} fontSize="11" textAnchor="middle" fill="#000">{price.toLocaleString()}</text>
+                </g>
+              );
+            })}
+          </svg>
           
+          {/* X-axis labels */}
           <div style={{
-            marginTop: '15px',
-            textAlign: 'center',
-            fontSize: '13px',
-            fontStyle: 'italic',
-            color: '#000'
+            display: 'flex',
+            justifyContent: 'space-between',
+            padding: '0 30px',
+            marginTop: '5px'
           }}>
-            Dự báo xu hướng giá trong 4 ngày tới dựa trên mô hình SVM
+            {priceTrendData.map((_, idx) => (
+              <div key={idx} style={{fontSize: '11px', color: '#000'}}>
+                {idx === 0 ? 'Hiện tại' : `Ngày ${idx}`}
+              </div>
+            ))}
           </div>
         </div>
-      )}
+        
+        <div style={{
+          marginTop: '15px',
+          textAlign: 'center',
+          fontSize: '13px',
+          fontStyle: 'italic',
+          color: '#000'
+        }}>
+          Dự báo xu hướng giá trong {priceTrendData.length - 1} ngày tới dựa trên mô hình SVM
+        </div>
+      </div>
 
       {/* Histogram Chart */}
       <div style={{marginTop: '30px', border: '1px solid #ddd', borderRadius: '8px', padding: '15px'}}>
@@ -547,28 +587,22 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
             <line x1="0" y1="0" x2="0" y2="200" stroke="#000" strokeWidth="1" />
             
             {/* Histogram bars */}
-            <rect x="20" y="197" width="10" height="3" fill="#1976D2" />
-            <rect x="35" y="190" width="10" height="10" fill="#1976D2" />
-            <rect x="50" y="180" width="10" height="20" fill="#1976D2" />
-            <rect x="65" y="165" width="10" height="35" fill="#1976D2" />
-            <rect x="80" y="145" width="10" height="55" fill="#1976D2" />
-            <rect x="95" y="120" width="10" height="80" fill="#1976D2" />
-            <rect x="110" y="100" width="10" height="100" fill="#1976D2" />
-            <rect x="125" y="75" width="10" height="125" fill="#1976D2" />
-            <rect x="140" y="60" width="10" height="140" fill="#1976D2" />
-            <rect x="155" y="40" width="10" height="160" fill="#1976D2" />
-            <rect x="170" y="20" width="10" height="180" fill="#1976D2" />
-            <rect x="185" y="0" width="10" height="200" fill="#1976D2" />
-            <rect x="200" y="15" width="10" height="185" fill="#1976D2" />
-            <rect x="215" y="35" width="10" height="165" fill="#1976D2" />
-            <rect x="230" y="55" width="10" height="145" fill="#1976D2" />
-            <rect x="245" y="80" width="10" height="120" fill="#1976D2" />
-            <rect x="260" y="105" width="10" height="95" fill="#1976D2" />
-            <rect x="275" y="130" width="10" height="70" fill="#1976D2" />
-            <rect x="290" y="155" width="10" height="45" fill="#1976D2" />
-            <rect x="305" y="175" width="10" height="25" fill="#1976D2" />
-            <rect x="320" y="190" width="10" height="10" fill="#1976D2" />
-            <rect x="335" y="197" width="10" height="3" fill="#1976D2" />
+            {histogramData.data.map((height, index) => {
+              const width = histogramData.binWidth;
+              const x = index * width;
+              const y = 200 - height;
+              
+              return (
+                <rect 
+                  key={index}
+                  x={15 + x} 
+                  y={y} 
+                  width={width} 
+                  height={height} 
+                  fill="#1976D2" 
+                />
+              );
+            })}
           </svg>
           
           {/* X-axis labels */}
@@ -600,7 +634,7 @@ const ChartComponent = ({ predictions, formatConfidence }) => {
 
 function SVMAnalysis({ onClose, onMenuChange }) {
   const currentDate = "2025-04-29";
-  const [stocks, setStocks] = useState([]); // Initialize with fixed market codes
+  const [stocks, setStocks] = useState([]); 
   const [tickers, setTickers] = useState([]);
   const [filteredTickers, setFilteredTickers] = useState([]);
   const [allData, setAllData] = useState([]);
@@ -614,7 +648,6 @@ function SVMAnalysis({ onClose, onMenuChange }) {
   const [selectedTicker, setSelectedTicker] = useState('');
   const [showChart, setShowChart] = useState(true);
 
-  // Fetch stocks and tickers on component load
   useEffect(() => {
     fetchStocksAndTickers();
     fetchLatestAnalysis();
@@ -638,7 +671,7 @@ function SVMAnalysis({ onClose, onMenuChange }) {
             setError('Error filtering data: ' + err.message);
           });
 
-      setSelectedTicker(''); // Reset ticker selection when MarketCode changes
+      setSelectedTicker(''); 
     } catch (err) {
       setError(`Lỗi khi tải dữ liệu: ${err.message}`);
     } finally {
@@ -668,12 +701,12 @@ function SVMAnalysis({ onClose, onMenuChange }) {
     }
   };
 
-  // Fetch latest SVM analysis
+ 
   const fetchLatestAnalysis = async () => {
     try {
       setLoading(true);
       
-      // Build query parameters for market_code and ticker if selected
+     
       let queryParams = new URLSearchParams();
       if (selectedStock) {
         queryParams.append('market_code', selectedStock);
