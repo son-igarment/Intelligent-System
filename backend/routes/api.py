@@ -629,9 +629,16 @@ def get_latest_svm_analysis():
         return jsonify({"error": "Database connection not available"}), 500
     
     try:
+        args = request.args
+
         # Get filter parameters from query
-        market_code = request.args.get('market_code')
-        ticker = request.args.get('ticker')
+        market_code = args.get('market_code')
+        ticker = args.get('ticker')
+
+        latest_analysis = {}
+
+        if not market_code or not ticker:
+            return jsonify(latest_analysis)
         
         # Build filter query
         filter_query = {}
